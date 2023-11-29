@@ -1,0 +1,24 @@
+[package]
+name = "autd3capi-backend-cuda"
+version = "17.0.0"
+edition = "2021"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+autd3capi-def = "17.0.2"
+autd3-backend-cuda = { path = ".." }
+libc = "0.2.144"
+
+[build-dependencies]
+autd3capi-wrapper-generator = "17.0.2"
+
+[features]
+single_float = ["autd3capi-def/single_float", "autd3-backend-cuda/single_float"]
+
+[profile.release]
+strip = true
+lto = true
+rpath = true
