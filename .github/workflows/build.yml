@@ -1,0 +1,105 @@
+name: build
+
+on:
+  push:
+    branches:
+      - 'develop'
+  pull_request:
+    types: [opened, reopened, review_requested]
+
+jobs:
+  check-src:
+    runs-on: ubuntu-latest
+    name: check if src files changed
+    outputs:
+      status: ${{ steps.changed-files.outputs.modified_files }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: tj-actions/changed-files@v40
+        id: changed-files
+        with:
+          files: |
+            .github/actions/setup-build/action.yml
+            .github/workflows/build.yml
+            ./**/*.rs
+            ./**/*.cu
+            ./*.toml
+
+  build-src:
+    needs: check-src
+    name: build-src-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v3
+        
+      - name: Rust cache
+        if: needs.check-src.outputs.status
+        uses: swatinem/rust-cache@v2
+
+      - name: Setup
+        if: needs.check-src.outputs.status
+        uses: ./.github/actions/setup-build
+        with:
+          os: ${{ matrix.os }}
+
+      - name: Test src on ${{ matrix.os }}
+        if: needs.check-src.outputs.status
+        run: |
+          cargo build
+          cargo test
+        shell: bash
+
+  test-src-for-unity:
+    needs: check-src
+    name: test-src-for-unity-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Rust cache
+        if: needs.check-src.outputs.status
+        uses: swatinem/rust-cache@v2
+
+      - name: Setup
+        if: needs.check-src.outputs.status
+        uses: ./.github/actions/setup-build
+        with:
+          os: ${{ matrix.os }}
+
+      - name: Test src for unity on ${{ matrix.os }}
+        if: needs.check-src.outputs.status
+        run: |
+          cargo build --features "single_float use_meter"
+          cargo test --features "single_float use_meter"
+        shell: bash
+
+  lint-src:
+    needs: check-src
+    name: lint-src
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup
+        if: needs.check-src.outputs.status
+        uses: ./.github/actions/setup-build
+        with:
+          os: ubuntu-latest
+
+      - name: Rust cache
+        if: needs.check-src.outputs.status
+        uses: swatinem/rust-cache@v2
+
+      - name: lint src
+        if: needs.check-src.outputs.status
+        run: |
+          cargo clippy -- -D warnings

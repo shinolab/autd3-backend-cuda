@@ -4,7 +4,7 @@
  * Created Date: 28/05/2021
  * Author: Shun Suzuki
  * -----
- * Last Modified: 22/11/2023
+ * Last Modified: 11/12/2023
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2021 Shun Suzuki. All rights reserved.
@@ -394,7 +394,7 @@ impl LinAlgBackend for CUDABackend {
                 geometry.devices().for_each(|dev| {
                     if let Some(filter) = filter.get(&dev.idx()) {
                         dev.iter().for_each(|tr| {
-                            if filter[tr.tr_idx()] {
+                            if filter[tr.idx()] {
                                 let p = tr.position();
                                 positions.push(p.x);
                                 positions.push(p.y);

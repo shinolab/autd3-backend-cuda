@@ -1,0 +1,21 @@
+name: Release
+
+on:
+  push:
+    tags:
+    - 'v*'
+
+jobs:
+  build:
+    name: publish-src
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup
+        uses: ./.github/actions/setup-build
+        with:
+          os: ubuntu-latest
+      - name: publish to carate.io
+        run: |
+          cargo publish --no-verify --dry-run
+          cargo publish --no-verify --token ${{ secrets.CRATEIO_TOKEN }} || true
