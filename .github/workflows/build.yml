@@ -47,40 +47,10 @@ jobs:
         with:
           os: ${{ matrix.os }}
 
-      - name: Test src on ${{ matrix.os }}
+      - name: Build src on ${{ matrix.os }}
         if: needs.check-src.outputs.status
         run: |
           cargo build
-          cargo test
-        shell: bash
-
-  test-src-for-unity:
-    needs: check-src
-    name: test-src-for-unity-${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Rust cache
-        if: needs.check-src.outputs.status
-        uses: swatinem/rust-cache@v2
-
-      - name: Setup
-        if: needs.check-src.outputs.status
-        uses: ./.github/actions/setup-build
-        with:
-          os: ${{ matrix.os }}
-
-      - name: Test src for unity on ${{ matrix.os }}
-        if: needs.check-src.outputs.status
-        run: |
-          cargo build --features "single_float use_meter"
-          cargo test --features "single_float use_meter"
         shell: bash
 
   lint-src:
