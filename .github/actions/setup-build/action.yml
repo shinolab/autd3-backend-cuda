@@ -7,6 +7,11 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Setup Rust
+      uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        toolchain: 'stable'
+
     - uses: Jimver/cuda-toolkit@v0.2.11
       if: inputs.os == 'windows-latest'
       with:
