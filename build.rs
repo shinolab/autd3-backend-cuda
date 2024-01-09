@@ -4,25 +4,27 @@
  * Created Date: 06/06/2023
  * Author: Shun Suzuki
  * -----
- * Last Modified: 22/11/2023
+ * Last Modified: 09/01/2024
  * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
  * -----
  * Copyright (c) 2023 Shun Suzuki. All rights reserved.
  *
  */
 
-#[cfg(not(target_os = "macos"))]
-use cuda_config::*;
-
 #[cfg(target_os = "macos")]
 fn main() {}
 
 #[cfg(not(target_os = "macos"))]
 fn main() {
+    use cuda_config::*;
+
     let mut build = cc::Build::new();
 
     #[cfg(feature = "single_float")]
     build.define("AUTD3_USE_SINGLE_FLOAT", "1");
+
+    #[cfg(feature = "use_meter")]
+    build.define("AUTD3_USE_METER", "1");
 
     build
         .cuda(true)
