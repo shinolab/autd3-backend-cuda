@@ -75,12 +75,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3c07dab4369547dbe5114677b33fbbf724971019f3818172d59a97a61c774ffd"
 
 [[package]]
-name = "autd3"
-version = "20.0.3"
+name = "async-trait"
+version = "0.1.77"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ac397552a7c1f9e35ddde2166d054968a1ef5da2da2ad5192142192831972445"
+checksum = "c980ee35e870bd1a4d2c8294d4c04d0499e67bca1e4b5cefcc693c2fa00caea9"
 dependencies = [
- "autd3-derive",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "autd3"
+version = "21.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43b0d20bc5ed38b70c4288ed62f676d5b0b2b2890f83013abb7fe6ab8d7610cc"
+dependencies = [
  "autd3-driver",
  "autd3-firmware-emulator",
  "bitvec",
@@ -91,7 +101,7 @@ dependencies = [
 
 [[package]]
 name = "autd3-backend-cuda"
-version = "20.0.3"
+version = "21.0.0"
 dependencies = [
  "anyhow",
  "autd3",
@@ -109,9 +119,9 @@ dependencies = [
 
 [[package]]
 name = "autd3-derive"
-version = "20.0.3"
+version = "21.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62b649b8c574e89d2acc94de48fea4337365a141500ddfc76435dcef813873f1"
+checksum = "8fc579f6b775fef2e65db315abbe37e44c188f685fb941092fd06c5c0981622b"
 dependencies = [
  "quote",
  "syn",
@@ -119,23 +129,27 @@ dependencies = [
 
 [[package]]
 name = "autd3-driver"
-version = "20.0.3"
+version = "21.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8b82a1188b6f667333045499f737f8b186028ada7385586bffa623e28d76bb7c"
+checksum = "235d390f2ec198e7f2208d97dbddb24523be611724c1a413f6b4937d30be28c8"
 dependencies = [
+ "async-trait",
+ "autd3-derive",
  "bitflags",
  "bitvec",
  "libc",
  "nalgebra",
+ "num-complex",
  "thiserror",
+ "tokio",
  "windows",
 ]
 
 [[package]]
 name = "autd3-firmware-emulator"
-version = "20.0.3"
+version = "21.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af1ef168727b436e6e975efb0ccedb6f8a3758ed13184525c92d94decd9c8501"
+checksum = "46bc78ec9d88b8f2f29e1d1b8fbfd78d4ecbc63504ebffe0019d1b1abc2bd241"
 dependencies = [
  "autd3-driver",
  "chrono",
@@ -145,12 +159,11 @@ dependencies = [
 
 [[package]]
 name = "autd3-gain-holo"
-version = "20.0.3"
+version = "21.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34561ae036aeab6c11144897d5e190c918757cd136eca4777ca72a1856b64747"
+checksum = "418db1eac57723911eb9f32c10b7a597521e3fffbde3d29cac19d7da52ac2119"
 dependencies = [
  "assert_approx_eq",
- "autd3-derive",
  "autd3-driver",
  "bitvec",
  "criterion",

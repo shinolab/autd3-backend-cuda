@@ -1,16 +1,3 @@
-/*
- * File: main.rs
- * Project: examples
- * Created Date: 29/11/2023
- * Author: Shun Suzuki
- * -----
- * Last Modified: 29/11/2023
- * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
- * -----
- * Copyright (c) 2023 Shun Suzuki. All rights reserved.
- *
- */
-
 use anyhow::Result;
 
 use autd3::prelude::*;

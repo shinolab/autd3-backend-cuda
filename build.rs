@@ -1,16 +1,3 @@
-/*
- * File: build.rs
- * Project: autd3-backend-cuda
- * Created Date: 06/06/2023
- * Author: Shun Suzuki
- * -----
- * Last Modified: 09/01/2024
- * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
- * -----
- * Copyright (c) 2023 Shun Suzuki. All rights reserved.
- *
- */
-
 #[cfg(target_os = "macos")]
 fn main() {}
 

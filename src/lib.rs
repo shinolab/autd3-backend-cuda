@@ -1,25 +1,14 @@
-/*
- * File: lib.rs
- * Project: src
- * Created Date: 28/05/2021
- * Author: Shun Suzuki
- * -----
- * Last Modified: 11/12/2023
- * Modified By: Shun Suzuki (suzuki@hapis.k.u-tokyo.ac.jp)
- * -----
- * Copyright (c) 2021 Shun Suzuki. All rights reserved.
- *
- */
-
 #![allow(unknown_lints)]
 #![allow(clippy::manual_slice_size_calculation)]
 
 mod cusolver;
 
-use std::{ffi::CStr, fmt::Display, rc::Rc};
+use std::{ffi::CStr, fmt::Display, sync::Arc};
 
 use autd3_driver::{datagram::GainFilter, defined::float, geometry::Geometry};
-use autd3_gain_holo::{HoloError, LinAlgBackend, MatrixX, MatrixXc, VectorX, VectorXc};
+use autd3_gain_holo::{
+    Complex, HoloError, LinAlgBackend, MatrixX, MatrixXc, Trans, VectorX, VectorXc,
+};
 use cuda_sys::cublas::{
     cublasOperation_t_CUBLAS_OP_C, cublasOperation_t_CUBLAS_OP_N, cublasOperation_t_CUBLAS_OP_T,
 };
@@ -329,6 +318,9 @@ pub struct CUDABackend {
     handle_s: cusolver::cusolverDnHandle_t,
 }
 
+unsafe impl Send for CUDABackend {}
+unsafe impl Sync for CUDABackend {}
+
 impl Drop for CUDABackend {
     fn drop(&mut self) {
         unsafe {
@@ -344,7 +336,7 @@ impl LinAlgBackend for CUDABackend {
     type VectorXc = CuVectorXc;
     type VectorX = CuVectorX;
 
-    fn new() -> Result<Rc<Self>, HoloError> {
+    fn new() -> Result<Arc<Self>, HoloError> {
         let mut handle: cuda_sys::cublas::cublasHandle_t = std::ptr::null_mut();
         unsafe {
             cublas_call!(cuda_sys::cublas::cublasCreate_v2(&mut handle as _));
@@ -353,7 +345,7 @@ impl LinAlgBackend for CUDABackend {
         let mut handle_s: cusolver::cusolverDnHandle_t = std::ptr::null_mut();
         unsafe { cusolver_call!(cusolver::cusolverDnCreate(&mut handle_s as _)) }
 
-        Ok(Rc::new(Self { handle, handle_s }))
+        Ok(Arc::new(Self { handle, handle_s }))
     }
 
     fn generate_propagation_matrix(
@@ -1748,6 +1740,42 @@ impl LinAlgBackend for CUDABackend {
 
     fn cols_c(&self, m: &Self::MatrixXc) -> Result<usize, HoloError> {
         Ok(m.cols)
+    }
+
+    fn gen_back_prop(
+        &self,
+        _m: usize,
+        n: usize,
+        transfer: &Self::MatrixXc,
+        b: &mut Self::MatrixXc,
+    ) -> Result<(), HoloError> {
+        let mut tmp = self.alloc_zeros_cm(n, n)?;
+
+        self.gemm_c(
+            Trans::NoTrans,
+            Trans::ConjTrans,
+            Complex::new(1., 0.),
+            transfer,
+            transfer,
+            Complex::new(0., 0.),
+            &mut tmp,
+        )?;
+
+        let mut denominator = self.alloc_cv(n)?;
+        self.get_diagonal_c(&tmp, &mut denominator)?;
+        self.reciprocal_assign_c(&mut denominator)?;
+
+        self.create_diagonal_c(&denominator, &mut tmp)?;
+
+        self.gemm_c(
+            Trans::ConjTrans,
+            Trans::NoTrans,
+            Complex::new(1., 0.),
+            transfer,
+            &tmp,
+            Complex::new(0., 0.),
+            b,
+        )
     }
 }
 
