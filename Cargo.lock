@@ -87,9 +87,9 @@ dependencies = [
 
 [[package]]
 name = "autd3"
-version = "21.0.0"
+version = "21.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43b0d20bc5ed38b70c4288ed62f676d5b0b2b2890f83013abb7fe6ab8d7610cc"
+checksum = "b651589996bbca539d99ce57302fd07885cce8fc59875c08fdd3b1e036b37e46"
 dependencies = [
  "autd3-driver",
  "autd3-firmware-emulator",
@@ -101,7 +101,7 @@ dependencies = [
 
 [[package]]
 name = "autd3-backend-cuda"
-version = "21.0.0"
+version = "21.1.0"
 dependencies = [
  "anyhow",
  "autd3",
@@ -119,9 +119,9 @@ dependencies = [
 
 [[package]]
 name = "autd3-derive"
-version = "21.0.0"
+version = "21.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8fc579f6b775fef2e65db315abbe37e44c188f685fb941092fd06c5c0981622b"
+checksum = "875d7121414be2432a2f540f378ed83704b9a1bc2bb375dc7701a26cb304de7e"
 dependencies = [
  "quote",
  "syn",
@@ -129,9 +129,9 @@ dependencies = [
 
 [[package]]
 name = "autd3-driver"
-version = "21.0.0"
+version = "21.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "235d390f2ec198e7f2208d97dbddb24523be611724c1a413f6b4937d30be28c8"
+checksum = "71bf7909e16b00613226170b269e5bbec07eb1efa1daf13de95bd51e43127bca"
 dependencies = [
  "async-trait",
  "autd3-derive",
@@ -147,9 +147,9 @@ dependencies = [
 
 [[package]]
 name = "autd3-firmware-emulator"
-version = "21.0.0"
+version = "21.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "46bc78ec9d88b8f2f29e1d1b8fbfd78d4ecbc63504ebffe0019d1b1abc2bd241"
+checksum = "fc79626a0a57508d66d251d94d251395d835a79bad7554cc41689084ad51d2b8"
 dependencies = [
  "autd3-driver",
  "chrono",
@@ -159,9 +159,9 @@ dependencies = [
 
 [[package]]
 name = "autd3-gain-holo"
-version = "21.0.0"
+version = "21.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "418db1eac57723911eb9f32c10b7a597521e3fffbde3d29cac19d7da52ac2119"
+checksum = "341daebc840b25c4102ab8ac578f141a62804c6efc6bc4c9db48a92940afe350"
 dependencies = [
  "assert_approx_eq",
  "autd3-driver",
