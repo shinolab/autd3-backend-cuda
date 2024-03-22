@@ -9,7 +9,7 @@ use autd3_gain_holo::*;
 async fn main() -> Result<()> {
     let mut autd = Controller::builder()
         .add_device(AUTD3::new(Vector3::zeros()))
-        .open_with(Nop::builder())
+        .open(Nop::builder())
         .await?;
 
     let backend = CUDABackend::new()?;
