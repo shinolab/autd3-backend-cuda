@@ -12,7 +12,7 @@ runs:
       with:
         toolchain: 'stable'
 
-    - uses: Jimver/cuda-toolkit@v0.2.11
+    - uses: Jimver/cuda-toolkit@v0.2.15
       if: inputs.os == 'windows-latest'
       with:
         cuda: '12.2.0'

@@ -5,7 +5,7 @@ mod cusolver;
 
 use std::{ffi::CStr, fmt::Display, sync::Arc};
 
-use autd3_driver::{datagram::GainFilter, geometry::Geometry};
+use autd3_driver::{acoustics::directivity::Sphere, datagram::GainFilter, geometry::Geometry};
 use autd3_gain_holo::{
     Complex, HoloError, LinAlgBackend, MatrixX, MatrixXc, Trans, VectorX, VectorXc,
 };
@@ -302,7 +302,7 @@ impl Drop for CUDABackend {
     }
 }
 
-impl LinAlgBackend for CUDABackend {
+impl LinAlgBackend<Sphere> for CUDABackend {
     type MatrixXc = CuMatrixXc;
     type MatrixX = CuMatrixX;
     type VectorXc = CuVectorXc;
@@ -344,12 +344,13 @@ impl LinAlgBackend for CUDABackend {
         match filter {
             GainFilter::All => {
                 geometry.devices().for_each(|dev| {
+                    let wavenumber = dev.wavenumber();
                     dev.iter().for_each(|tr| {
                         let p = tr.position();
                         positions.push(p.x);
                         positions.push(p.y);
                         positions.push(p.z);
-                        wavenums.push(tr.wavenumber(dev.sound_speed));
+                        wavenums.push(wavenumber);
                         attens.push(dev.attenuation);
                     })
                 });
@@ -357,13 +358,14 @@ impl LinAlgBackend for CUDABackend {
             GainFilter::Filter(filter) => {
                 geometry.devices().for_each(|dev| {
                     if let Some(filter) = filter.get(&dev.idx()) {
+                        let wavenumber = dev.wavenumber();
                         dev.iter().for_each(|tr| {
                             if filter[tr.idx()] {
                                 let p = tr.position();
                                 positions.push(p.x);
                                 positions.push(p.y);
                                 positions.push(p.z);
-                                wavenums.push(tr.wavenumber(dev.sound_speed));
+                                wavenums.push(wavenumber);
                                 attens.push(dev.attenuation);
                             }
                         })
@@ -1563,11 +1565,10 @@ impl LinAlgBackend for CUDABackend {
 
     fn gen_back_prop(
         &self,
-        _m: usize,
+        m: usize,
         n: usize,
         transfer: &Self::MatrixXc,
-        b: &mut Self::MatrixXc,
-    ) -> Result<(), HoloError> {
+    ) -> Result<Self::MatrixXc, HoloError> {
         let mut tmp = self.alloc_zeros_cm(n, n)?;
 
         self.gemm_c(
@@ -1586,6 +1587,7 @@ impl LinAlgBackend for CUDABackend {
 
         self.create_diagonal_c(&denominator, &mut tmp)?;
 
+        let mut b = self.alloc_zeros_cm(m, n)?;
         self.gemm_c(
             Trans::ConjTrans,
             Trans::NoTrans,
@@ -1593,8 +1595,9 @@ impl LinAlgBackend for CUDABackend {
             transfer,
             &tmp,
             Complex::new(0., 0.),
-            b,
-        )
+            &mut b,
+        )?;
+        Ok(b)
     }
 }
 
