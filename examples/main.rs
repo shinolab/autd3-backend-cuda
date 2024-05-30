@@ -7,8 +7,7 @@ use autd3_gain_holo::*;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let mut autd = Controller::builder()
-        .add_device(AUTD3::new(Vector3::zeros()))
+    let mut autd = Controller::builder([AUTD3::new(Vector3::zeros())])
         .open(Nop::builder())
         .await?;
 
@@ -16,9 +15,7 @@ async fn main() -> Result<()> {
 
     let center = autd.geometry.center() + Vector3::new(0., 0., 150.0 * mm);
     let p = Vector3::new(30. * mm, 0., 0.);
-    let g = GSPAT::new(backend)
-        .add_focus(center + p, 5e3 * Pa)
-        .add_focus(center - p, 5e3 * Pa);
+    let g = GSPAT::new(backend, [(center + p, 5e3 * Pa), (center - p, 5e3 * Pa)]);
 
     autd.send(g).await?;
 
