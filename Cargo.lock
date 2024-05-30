@@ -72,13 +72,14 @@ dependencies = [
 
 [[package]]
 name = "autd3"
-version = "24.0.0"
+version = "25.0.0-rc.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "def2bdd599bbb60aeef1d2c17dbee41d5e7da9ff509d455b0d17f4fefde6802f"
+checksum = "19a2543a9309da31b5ce3c7f86af364f99ae6f0e6c593f1aad466057ffb644cb"
 dependencies = [
  "autd3-driver",
  "autd3-firmware-emulator",
  "bitvec",
+ "derive_more",
  "num",
  "thiserror",
  "tokio",
@@ -86,12 +87,13 @@ dependencies = [
 
 [[package]]
 name = "autd3-backend-cuda"
-version = "24.0.0"
+version = "25.0.0-rc.1"
 dependencies = [
  "anyhow",
  "autd3",
  "autd3-driver",
  "autd3-gain-holo",
+ "bitvec",
  "cc",
  "criterion",
  "cuda-config",
@@ -104,20 +106,21 @@ dependencies = [
 
 [[package]]
 name = "autd3-derive"
-version = "24.0.0"
+version = "25.0.0-rc.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4baf3dc212754025b09b5411c3ad53939e2e5685542265b364d1dd1a7c152d1a"
+checksum = "270c05c04923bc145578c6fd0dc79ebac837a1408d2b9d037fc1a4623a75b8b2"
 dependencies = [
  "proc-macro2",
  "quote",
+ "regex",
  "syn 2.0.61",
 ]
 
 [[package]]
 name = "autd3-driver"
-version = "24.0.0"
+version = "25.0.0-rc.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01c871c8aabb1ccbee167eb70e88d0cafbb143bbbf81ab65353546469867ab59"
+checksum = "92390a4d10a8176a005a63232f7adbf28cfb30df8d54bd333900eab09c26d3b6"
 dependencies = [
  "async-trait",
  "autd3-derive",
@@ -125,6 +128,7 @@ dependencies = [
  "bitflags",
  "bitvec",
  "derive_more",
+ "is_sorted",
  "itertools 0.12.1",
  "nalgebra",
  "num-complex",
@@ -137,9 +141,9 @@ dependencies = [
 
 [[package]]
 name = "autd3-firmware-emulator"
-version = "24.0.0"
+version = "25.0.0-rc.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5cd63422dbb7b41c7febe46da88879e6614dad03e3d2bf402d0fc54686f5e03b"
+checksum = "a3d408eb16a58b4bfe3e1ff86deef20e84739f68579a3b743c485e6f5a24aaf1"
 dependencies = [
  "autd3-driver",
  "num-integer",
@@ -149,14 +153,16 @@ dependencies = [
 
 [[package]]
 name = "autd3-gain-holo"
-version = "24.0.0"
+version = "25.0.0-rc.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "429447a7ab68a8c7a3070ad8d9bc18075bf54c44d3321c50011fb64b2a4a0a97"
+checksum = "fb9db99197de0688c0bc6d2b18b38d5f9ddbd4e6e61971d0220636803b89cc93"
 dependencies = [
+ "approx",
  "assert_approx_eq",
  "autd3-driver",
  "bitvec",
  "criterion",
+ "derive_more",
  "nalgebra",
  "rand",
  "rstest",
@@ -561,6 +567,12 @@ dependencies = [
  "libc",
  "windows-sys",
 ]
+
+[[package]]
+name = "is_sorted"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "357376465c37db3372ef6a00585d336ed3d0f11d4345eef77ebcb05865392b21"
 
 [[package]]
 name = "itertools"

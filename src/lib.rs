@@ -3,12 +3,13 @@
 
 mod cusolver;
 
-use std::{ffi::CStr, fmt::Display, sync::Arc};
+use std::{collections::HashMap, ffi::CStr, fmt::Display, sync::Arc};
 
-use autd3_driver::{acoustics::directivity::Sphere, datagram::GainFilter, geometry::Geometry};
+use autd3_driver::{acoustics::directivity::Sphere, geometry::Geometry};
 use autd3_gain_holo::{
     Complex, HoloError, LinAlgBackend, MatrixX, MatrixXc, Trans, VectorX, VectorXc,
 };
+use bitvec::{order::Lsb0, vec::BitVec};
 use cuda_sys::cublas::{
     cublasOperation_t_CUBLAS_OP_C, cublasOperation_t_CUBLAS_OP_N, cublasOperation_t_CUBLAS_OP_T,
 };
@@ -324,7 +325,7 @@ impl LinAlgBackend<Sphere> for CUDABackend {
         &self,
         geometry: &Geometry,
         foci: &[autd3_driver::geometry::Vector3],
-        filter: &GainFilter,
+        filter: &Option<HashMap<usize, BitVec<usize, Lsb0>>>,
     ) -> Result<Self::MatrixXc, HoloError> {
         let cols = geometry
             .devices()
@@ -341,37 +342,34 @@ impl LinAlgBackend<Sphere> for CUDABackend {
         let mut wavenums = Vec::with_capacity(cols);
         let mut attens = Vec::with_capacity(cols);
 
-        match filter {
-            GainFilter::All => {
-                geometry.devices().for_each(|dev| {
+        if let Some(filter) = filter {
+            geometry.devices().for_each(|dev| {
+                if let Some(filter) = filter.get(&dev.idx()) {
                     let wavenumber = dev.wavenumber();
                     dev.iter().for_each(|tr| {
-                        let p = tr.position();
-                        positions.push(p.x);
-                        positions.push(p.y);
-                        positions.push(p.z);
-                        wavenums.push(wavenumber);
-                        attens.push(dev.attenuation);
+                        if filter[tr.idx()] {
+                            let p = tr.position();
+                            positions.push(p.x);
+                            positions.push(p.y);
+                            positions.push(p.z);
+                            wavenums.push(wavenumber);
+                            attens.push(dev.attenuation);
+                        }
                     })
-                });
-            }
-            GainFilter::Filter(filter) => {
-                geometry.devices().for_each(|dev| {
-                    if let Some(filter) = filter.get(&dev.idx()) {
-                        let wavenumber = dev.wavenumber();
-                        dev.iter().for_each(|tr| {
-                            if filter[tr.idx()] {
-                                let p = tr.position();
-                                positions.push(p.x);
-                                positions.push(p.y);
-                                positions.push(p.z);
-                                wavenums.push(wavenumber);
-                                attens.push(dev.attenuation);
-                            }
-                        })
-                    }
-                });
-            }
+                }
+            });
+        } else {
+            geometry.devices().for_each(|dev| {
+                let wavenumber = dev.wavenumber();
+                dev.iter().for_each(|tr| {
+                    let p = tr.position();
+                    positions.push(p.x);
+                    positions.push(p.y);
+                    positions.push(p.z);
+                    wavenums.push(wavenumber);
+                    attens.push(dev.attenuation);
+                })
+            });
         }
 
         let cols = wavenums.len();
