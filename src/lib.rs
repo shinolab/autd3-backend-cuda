@@ -13,24 +13,28 @@ use bitvec::{order::Lsb0, vec::BitVec};
 use cuda_sys::cublas::{
     cublasOperation_t_CUBLAS_OP_C, cublasOperation_t_CUBLAS_OP_N, cublasOperation_t_CUBLAS_OP_T,
 };
-use cusolver::cudaDataType_t::{CUDA_C_64F, CUDA_R_64F};
+use cusolver::cudaDataType_t::{CUDA_C_32F, CUDA_R_32F};
 use thiserror::Error;
 
 #[repr(C)]
-#[repr(align(16))]
-struct CuComplex(cuda_sys::cublas::cuDoubleComplex);
+#[repr(align(8))]
+struct CuComplex(cuda_sys::cublas::cuFloatComplex);
 
-fn make_complex(x: f64, y: f64) -> CuComplex {
-    CuComplex(cuda_sys::cublas::cuDoubleComplex { x, y })
+fn make_complex(x: f32, y: f32) -> CuComplex {
+    CuComplex(cuda_sys::cublas::cuFloatComplex {
+        x,
+        y,
+        __bindgen_align: [],
+    })
 }
 
 #[link(name = "autd3_cuda_kernel", kind = "static")]
 extern "C" {
     fn cu_generate_propagation_matrix(
-        positions: *const f64,
-        foci: *const f64,
-        wavenums: *const f64,
-        attens: *const f64,
+        positions: *const f32,
+        foci: *const f32,
+        wavenums: *const f32,
+        attens: *const f32,
         row: u32,
         col: u32,
         dst: *mut CuComplex,
@@ -45,9 +49,9 @@ extern "C" {
         c: *mut CuComplex,
     );
 
-    fn cu_get_diagonal(x: *const f64, row: u32, col: u32, y: *mut f64);
+    fn cu_get_diagonal(x: *const f32, row: u32, col: u32, y: *mut f32);
     fn cu_get_diagonal_c(x: *const CuComplex, row: u32, col: u32, y: *mut CuComplex);
-    fn cu_set_diagonal(x: *const f64, n: u32, y: *mut f64);
+    fn cu_set_diagonal(x: *const f32, n: u32, y: *mut f32);
     fn cu_set_diagonal_c(x: *const CuComplex, n: u32, y: *mut CuComplex);
     fn cu_reciprocal(x: *const CuComplex, row: u32, col: u32, y: *mut CuComplex);
     fn cu_hadamard_product(
@@ -58,21 +62,22 @@ extern "C" {
         z: *mut CuComplex,
     );
 
-    fn cu_abs(a: *const CuComplex, row: u32, col: u32, b: *mut f64);
-    fn cu_sqrt(a: *const f64, row: u32, col: u32, b: *mut f64);
-    fn cu_make_complex(re: *const f64, row: u32, col: u32, dst: *mut CuComplex);
-    fn cu_make_complex2(re: *const f64, im: *const f64, row: u32, col: u32, dst: *mut CuComplex);
-    fn cu_pow(a: *const f64, p: f64, row: u32, col: u32, b: *mut f64);
+    fn cu_abs(a: *const CuComplex, row: u32, col: u32, b: *mut f32);
+    fn cu_norm_squared(a: *const CuComplex, row: u32, col: u32, b: *mut f32);
+    fn cu_sqrt(a: *const f32, row: u32, col: u32, b: *mut f32);
+    fn cu_make_complex(re: *const f32, row: u32, col: u32, dst: *mut CuComplex);
+    fn cu_make_complex2(re: *const f32, im: *const f32, row: u32, col: u32, dst: *mut CuComplex);
+    fn cu_pow(a: *const f32, p: f32, row: u32, col: u32, b: *mut f32);
 
     fn cu_conj(a: *const CuComplex, row: u32, col: u32, b: *mut CuComplex);
 
-    fn cu_calc_singular_inv(a: *const f64, row: u32, col: u32, alpha: f64, b: *mut CuComplex);
+    fn cu_calc_singular_inv(a: *const f32, row: u32, col: u32, alpha: f32, b: *mut CuComplex);
 
     fn cu_exp(a: *const CuComplex, row: u32, col: u32, b: *mut CuComplex);
-    fn cu_real(a: *const CuComplex, row: u32, col: u32, b: *mut f64);
-    fn cu_imag(a: *const CuComplex, row: u32, col: u32, b: *mut f64);
+    fn cu_real(a: *const CuComplex, row: u32, col: u32, b: *mut f32);
+    fn cu_imag(a: *const CuComplex, row: u32, col: u32, b: *mut f32);
 
-    fn cu_reduce_col(mat: *const f64, m: u32, n: u32, result: *mut f64);
+    fn cu_reduce_col(mat: *const f32, m: u32, n: u32, result: *mut f32);
 }
 
 fn convert_trans(trans: autd3_gain_holo::Trans) -> u32 {
@@ -232,7 +237,7 @@ macro_rules! cpy_device_to_host {
 }
 
 pub struct CuVectorX {
-    pub(crate) ptr: *mut f64,
+    pub(crate) ptr: *mut f32,
     pub(crate) len: usize,
 }
 
@@ -258,7 +263,7 @@ impl Drop for CuVectorXc {
 }
 
 pub struct CuMatrixX {
-    pub(crate) ptr: *mut f64,
+    pub(crate) ptr: *mut f32,
     pub(crate) rows: usize,
     pub(crate) cols: usize,
 }
@@ -375,14 +380,14 @@ impl LinAlgBackend<Sphere> for CUDABackend {
         let cols = wavenums.len();
 
         unsafe {
-            let p_positions = alloc_uninitialized!(f64, positions.len());
-            cpy_host_to_device!(f64, positions.as_ptr(), p_positions, positions.len());
-            let p_foci = alloc_uninitialized!(f64, foci.len());
-            cpy_host_to_device!(f64, foci.as_ptr(), p_foci, foci.len());
-            let p_wavenums = alloc_uninitialized!(f64, wavenums.len());
-            cpy_host_to_device!(f64, wavenums.as_ptr(), p_wavenums, wavenums.len());
-            let p_attens = alloc_uninitialized!(f64, attens.len());
-            cpy_host_to_device!(f64, attens.as_ptr(), p_attens, attens.len());
+            let p_positions = alloc_uninitialized!(f32, positions.len());
+            cpy_host_to_device!(f32, positions.as_ptr(), p_positions, positions.len());
+            let p_foci = alloc_uninitialized!(f32, foci.len());
+            cpy_host_to_device!(f32, foci.as_ptr(), p_foci, foci.len());
+            let p_wavenums = alloc_uninitialized!(f32, wavenums.len());
+            cpy_host_to_device!(f32, wavenums.as_ptr(), p_wavenums, wavenums.len());
+            let p_attens = alloc_uninitialized!(f32, attens.len());
+            cpy_host_to_device!(f32, attens.as_ptr(), p_attens, attens.len());
             let ptr = alloc_uninitialized!(CuComplex, rows, cols);
             cu_call!(cu_generate_propagation_matrix(
                 p_positions,
@@ -400,7 +405,7 @@ impl LinAlgBackend<Sphere> for CUDABackend {
     fn alloc_v(&self, size: usize) -> Result<Self::VectorX, HoloError> {
         unsafe {
             Ok(Self::VectorX {
-                ptr: alloc_uninitialized!(f64, size),
+                ptr: alloc_uninitialized!(f32, size),
                 len: size,
             })
         }
@@ -409,7 +414,7 @@ impl LinAlgBackend<Sphere> for CUDABackend {
     fn alloc_m(&self, rows: usize, cols: usize) -> Result<Self::MatrixX, HoloError> {
         unsafe {
             Ok(Self::MatrixX {
-                ptr: alloc_uninitialized!(f64, rows * cols),
+                ptr: alloc_uninitialized!(f32, rows * cols),
                 rows,
                 cols,
             })
@@ -438,7 +443,7 @@ impl LinAlgBackend<Sphere> for CUDABackend {
     fn alloc_zeros_v(&self, size: usize) -> Result<Self::VectorX, HoloError> {
         unsafe {
             Ok(Self::VectorX {
-                ptr: alloc_zeroed!(f64, size),
+                ptr: alloc_zeroed!(f32, size),
                 len: size,
             })
         }
@@ -465,13 +470,13 @@ impl LinAlgBackend<Sphere> for CUDABackend {
 
     fn to_host_v(&self, v: Self::VectorX) -> Result<VectorX, HoloError> {
         let mut dst = VectorX::zeros(v.len);
-        unsafe { cpy_device_to_host!(f64, v.ptr, dst.as_mut_ptr(), v.len) }
+        unsafe { cpy_device_to_host!(f32, v.ptr, dst.as_mut_ptr(), v.len) }
         Ok(dst)
     }
 
     fn to_host_m(&self, v: Self::MatrixX) -> Result<MatrixX, HoloError> {
         let mut dst = MatrixX::zeros(v.rows, v.cols);
-        unsafe { cpy_device_to_host!(f64, v.ptr, dst.as_mut_ptr(), v.rows * v.cols) }
+        unsafe { cpy_device_to_host!(f32, v.ptr, dst.as_mut_ptr(), v.rows * v.cols) }
         Ok(dst)
     }
 
@@ -487,11 +492,11 @@ impl LinAlgBackend<Sphere> for CUDABackend {
         Ok(dst)
     }
 
-    fn from_slice_v(&self, v: &[f64]) -> Result<Self::VectorX, HoloError> {
+    fn from_slice_v(&self, v: &[f32]) -> Result<Self::VectorX, HoloError> {
         unsafe {
             let len = v.len();
-            let ptr = alloc_uninitialized!(f64, len);
-            cpy_host_to_device!(f64, v.as_ptr(), ptr, len);
+            let ptr = alloc_uninitialized!(f32, len);
+            cpy_host_to_device!(f32, v.as_ptr(), ptr, len);
             Ok(Self::VectorX { ptr, len })
         }
     }
@@ -500,34 +505,34 @@ impl LinAlgBackend<Sphere> for CUDABackend {
         &self,
         rows: usize,
         cols: usize,
-        v: &[f64],
+        v: &[f32],
     ) -> Result<Self::MatrixX, HoloError> {
         unsafe {
             let len = v.len();
-            let ptr = alloc_uninitialized!(f64, len);
-            cpy_host_to_device!(f64, v.as_ptr(), ptr, len);
+            let ptr = alloc_uninitialized!(f32, len);
+            cpy_host_to_device!(f32, v.as_ptr(), ptr, len);
             Ok(Self::MatrixX { ptr, rows, cols })
         }
     }
 
-    fn from_slice_cv(&self, v: &[f64]) -> Result<Self::VectorXc, HoloError> {
+    fn from_slice_cv(&self, v: &[f32]) -> Result<Self::VectorXc, HoloError> {
         unsafe {
             let len = v.len();
-            let re = alloc_uninitialized!(f64, len);
-            cpy_host_to_device!(f64, v.as_ptr(), re, len);
+            let re = alloc_uninitialized!(f32, len);
+            cpy_host_to_device!(f32, v.as_ptr(), re, len);
             let ptr = alloc_uninitialized!(CuComplex, len);
             cu_call!(cu_make_complex(re, len as _, 1, ptr));
             Ok(Self::VectorXc { ptr, len })
         }
     }
 
-    fn from_slice2_cv(&self, r: &[f64], i: &[f64]) -> Result<Self::VectorXc, HoloError> {
+    fn from_slice2_cv(&self, r: &[f32], i: &[f32]) -> Result<Self::VectorXc, HoloError> {
         unsafe {
             let len = r.len();
-            let re = alloc_uninitialized!(f64, len);
-            cpy_host_to_device!(f64, r.as_ptr(), re, len);
-            let im = alloc_uninitialized!(f64, len);
-            cpy_host_to_device!(f64, i.as_ptr(), im, len);
+            let re = alloc_uninitialized!(f32, len);
+            cpy_host_to_device!(f32, r.as_ptr(), re, len);
+            let im = alloc_uninitialized!(f32, len);
+            cpy_host_to_device!(f32, i.as_ptr(), im, len);
             let ptr = alloc_uninitialized!(CuComplex, len);
             cu_call!(cu_make_complex2(re, im, len as _, 1, ptr));
             Ok(Self::VectorXc { ptr, len })
@@ -538,38 +543,38 @@ impl LinAlgBackend<Sphere> for CUDABackend {
         &self,
         rows: usize,
         cols: usize,
-        r: &[f64],
-        i: &[f64],
+        r: &[f32],
+        i: &[f32],
     ) -> Result<Self::MatrixXc, HoloError> {
         unsafe {
             let len = r.len();
-            let re = alloc_uninitialized!(f64, len);
-            cpy_host_to_device!(f64, r.as_ptr(), re, len);
-            let im = alloc_uninitialized!(f64, len);
-            cpy_host_to_device!(f64, i.as_ptr(), im, len);
+            let re = alloc_uninitialized!(f32, len);
+            cpy_host_to_device!(f32, r.as_ptr(), re, len);
+            let im = alloc_uninitialized!(f32, len);
+            cpy_host_to_device!(f32, i.as_ptr(), im, len);
             let ptr = alloc_uninitialized!(CuComplex, len);
             cu_call!(cu_make_complex2(re, im, rows as _, cols as _, ptr));
             Ok(Self::MatrixXc { ptr, rows, cols })
         }
     }
 
-    fn copy_from_slice_v(&self, v: &[f64], dst: &mut Self::VectorX) -> Result<(), HoloError> {
+    fn copy_from_slice_v(&self, v: &[f32], dst: &mut Self::VectorX) -> Result<(), HoloError> {
         unsafe {
-            cpy_host_to_device!(f64, v.as_ptr(), dst.ptr, v.len());
+            cpy_host_to_device!(f32, v.as_ptr(), dst.ptr, v.len());
         }
         Ok(())
     }
 
     fn copy_to_v(&self, src: &Self::VectorX, dst: &mut Self::VectorX) -> Result<(), HoloError> {
         unsafe {
-            cpy_device_to_device!(f64, src.ptr, dst.ptr, src.len);
+            cpy_device_to_device!(f32, src.ptr, dst.ptr, src.len);
         }
         Ok(())
     }
 
     fn copy_to_m(&self, src: &Self::MatrixX, dst: &mut Self::MatrixX) -> Result<(), HoloError> {
         unsafe {
-            cpy_device_to_device!(f64, src.ptr, dst.ptr, src.rows * src.cols);
+            cpy_device_to_device!(f32, src.ptr, dst.ptr, src.rows * src.cols);
         }
         Ok(())
     }
@@ -577,8 +582,8 @@ impl LinAlgBackend<Sphere> for CUDABackend {
     fn clone_v(&self, v: &Self::VectorX) -> Result<Self::VectorX, HoloError> {
         unsafe {
             let len = v.len;
-            let ptr = alloc_uninitialized!(f64, len);
-            cpy_device_to_device!(f64, v.ptr, ptr, len);
+            let ptr = alloc_uninitialized!(f32, len);
+            cpy_device_to_device!(f32, v.ptr, ptr, len);
             Ok(Self::VectorX { ptr, len })
         }
     }
@@ -586,8 +591,8 @@ impl LinAlgBackend<Sphere> for CUDABackend {
     fn clone_m(&self, v: &Self::MatrixX) -> Result<Self::MatrixX, HoloError> {
         unsafe {
             let len = v.rows * v.cols;
-            let ptr = alloc_uninitialized!(f64, len);
-            cpy_device_to_device!(f64, v.ptr, ptr, len);
+            let ptr = alloc_uninitialized!(f32, len);
+            cpy_device_to_device!(f32, v.ptr, ptr, len);
             Ok(Self::MatrixX {
                 ptr,
                 rows: v.rows,
@@ -702,7 +707,7 @@ impl LinAlgBackend<Sphere> for CUDABackend {
             let rows = v.rows;
             let src_p = a.ptr;
             let dst_p = v.ptr;
-            cublas_call!(cuda_sys::cublas::cublasZcopy_v2(
+            cublas_call!(cuda_sys::cublas::cublasCcopy_v2(
                 self.handle,
                 (end - start) as _,
                 src_p.add(start) as _,
@@ -731,7 +736,7 @@ impl LinAlgBackend<Sphere> for CUDABackend {
             cuda_call!(cuda_sys::cudart::cudaMemset(
                 a.ptr as _,
                 0,
-                std::mem::size_of::<f64>() * a.rows * a.cols
+                std::mem::size_of::<f32>() * a.rows * a.cols
             ));
             cu_call!(cu_set_diagonal(v.ptr as _, v.len as _, a.ptr));
         }
@@ -773,6 +778,13 @@ impl LinAlgBackend<Sphere> for CUDABackend {
         Ok(())
     }
 
+    fn norm_squared_cv(&self, a: &Self::VectorXc, b: &mut Self::VectorX) -> Result<(), HoloError> {
+        unsafe {
+            cu_call!(cu_norm_squared(a.ptr as _, a.len as _, 1, b.ptr as _));
+        }
+        Ok(())
+    }
+
     fn real_cm(&self, a: &Self::MatrixXc, b: &mut Self::MatrixX) -> Result<(), HoloError> {
         unsafe {
             cu_call!(cu_real(a.ptr as _, a.rows as _, a.cols as _, b.ptr as _));
@@ -787,9 +799,9 @@ impl LinAlgBackend<Sphere> for CUDABackend {
         Ok(())
     }
 
-    fn scale_assign_v(&self, a: f64, b: &mut Self::VectorX) -> Result<(), HoloError> {
+    fn scale_assign_v(&self, a: f32, b: &mut Self::VectorX) -> Result<(), HoloError> {
         unsafe {
-            cublas_call!(cuda_sys::cublas::cublasDscal_v2(
+            cublas_call!(cuda_sys::cublas::cublasSscal_v2(
                 self.handle,
                 b.len as _,
                 &a as _,
@@ -807,7 +819,7 @@ impl LinAlgBackend<Sphere> for CUDABackend {
     ) -> Result<(), HoloError> {
         let a = make_complex(a.re, a.im);
         unsafe {
-            cublas_call!(cuda_sys::cublas::cublasZscal_v2(
+            cublas_call!(cuda_sys::cublas::cublasCscal_v2(
                 self.handle,
                 b.len as _,
                 &a as *const _ as _,
@@ -825,7 +837,7 @@ impl LinAlgBackend<Sphere> for CUDABackend {
     ) -> Result<(), HoloError> {
         let a = make_complex(a.re, a.im);
         unsafe {
-            cublas_call!(cuda_sys::cublas::cublasZscal_v2(
+            cublas_call!(cuda_sys::cublas::cublasCscal_v2(
                 self.handle,
                 (b.cols * b.rows) as _,
                 &a as *const _ as _,
@@ -864,7 +876,7 @@ impl LinAlgBackend<Sphere> for CUDABackend {
         Ok(())
     }
 
-    fn pow_assign_v(&self, a: f64, v: &mut Self::VectorX) -> Result<(), HoloError> {
+    fn pow_assign_v(&self, a: f32, v: &mut Self::VectorX) -> Result<(), HoloError> {
         unsafe {
             cu_call!(cu_pow(v.ptr as _, a, v.len as _, 1, v.ptr as _));
         }
@@ -949,20 +961,32 @@ impl LinAlgBackend<Sphere> for CUDABackend {
         Ok(())
     }
 
-    fn max_v(&self, m: &Self::VectorX) -> Result<f64, HoloError> {
-        // TODO: impl with GPU
-        let mut tmp: Vec<f64> = vec![0.; m.len];
+    fn max_v(&self, m: &Self::VectorX) -> Result<f32, HoloError> {
         unsafe {
-            cpy_device_to_host!(f64, m.ptr, tmp.as_mut_ptr(), m.len);
+            let mut idx: i32 = 0;
+            cublas_call!(cuda_sys::cublas::cublasIsamax_v2(
+                self.handle,
+                m.len as _,
+                m.ptr as _,
+                1,
+                &mut idx as _,
+            ));
+            let mut res = 0.;
+            cuda_call!(cuda_sys::cudart::cudaMemcpy(
+                &mut res as *mut _ as _,
+                m.ptr.add(idx as usize - 1) as _,
+                std::mem::size_of::<f32>(),
+                cuda_sys::cudart::cudaMemcpyKind_cudaMemcpyDeviceToHost,
+            ));
+            Ok(res)
         }
-        Ok(tmp.into_iter().fold(0., f64::max))
     }
 
     fn max_eigen_vector_c(&self, m: Self::MatrixXc) -> Result<Self::VectorXc, HoloError> {
         unsafe {
             let max_ev = alloc_uninitialized!(CuComplex, m.cols);
 
-            let dw = alloc_uninitialized!(f64, m.cols);
+            let dw = alloc_uninitialized!(f32, m.cols);
 
             let mut workspace_in_bytes_on_device: u64 = 0;
             let mut workspace_in_bytes_on_host: u64 = 0;
@@ -972,12 +996,12 @@ impl LinAlgBackend<Sphere> for CUDABackend {
                 cusolver::cusolverEigMode_t::CUSOLVER_EIG_MODE_VECTOR,
                 cusolver::cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
                 m.cols as _,
-                CUDA_C_64F,
+                CUDA_C_32F,
                 m.ptr as _,
                 m.cols as _,
-                CUDA_R_64F,
+                CUDA_R_32F,
                 dw as _,
-                CUDA_C_64F,
+                CUDA_C_32F,
                 &mut workspace_in_bytes_on_device as _,
                 &mut workspace_in_bytes_on_host as _,
             ));
@@ -999,12 +1023,12 @@ impl LinAlgBackend<Sphere> for CUDABackend {
                 cusolver::cusolverEigMode_t::CUSOLVER_EIG_MODE_VECTOR,
                 cusolver::cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
                 m.cols as _,
-                CUDA_C_64F,
+                CUDA_C_32F,
                 m.ptr as _,
                 m.cols as _,
-                CUDA_R_64F,
+                CUDA_R_32F,
                 dw as _,
-                CUDA_C_64F,
+                CUDA_C_32F,
                 workspace_buffer_on_device as _,
                 workspace_in_bytes_on_device,
                 workspace_buffer_on_host as _,
@@ -1074,10 +1098,10 @@ impl LinAlgBackend<Sphere> for CUDABackend {
         Ok(())
     }
 
-    fn dot(&self, x: &Self::VectorX, y: &Self::VectorX) -> Result<f64, HoloError> {
+    fn dot(&self, x: &Self::VectorX, y: &Self::VectorX) -> Result<f32, HoloError> {
         unsafe {
-            let mut d: f64 = 0.;
-            cublas_call!(cuda_sys::cublas::cublasDdot_v2(
+            let mut d: f32 = 0.;
+            cublas_call!(cuda_sys::cublas::cublasSdot_v2(
                 self.handle,
                 x.len as _,
                 x.ptr as _,
@@ -1097,7 +1121,7 @@ impl LinAlgBackend<Sphere> for CUDABackend {
     ) -> Result<autd3_gain_holo::Complex, HoloError> {
         unsafe {
             let mut d = autd3_gain_holo::Complex::new(0., 0.);
-            cublas_call!(cuda_sys::cublas::cublasZdotc_v2(
+            cublas_call!(cuda_sys::cublas::cublasCdotc_v2(
                 self.handle,
                 x.len as _,
                 x.ptr as _,
@@ -1110,9 +1134,9 @@ impl LinAlgBackend<Sphere> for CUDABackend {
         }
     }
 
-    fn add_v(&self, alpha: f64, a: &Self::VectorX, b: &mut Self::VectorX) -> Result<(), HoloError> {
+    fn add_v(&self, alpha: f32, a: &Self::VectorX, b: &mut Self::VectorX) -> Result<(), HoloError> {
         unsafe {
-            cublas_call!(cuda_sys::cublas::cublasDaxpy_v2(
+            cublas_call!(cuda_sys::cublas::cublasSaxpy_v2(
                 self.handle,
                 a.len as _,
                 &alpha as _,
@@ -1125,9 +1149,9 @@ impl LinAlgBackend<Sphere> for CUDABackend {
         }
     }
 
-    fn add_m(&self, alpha: f64, a: &Self::MatrixX, b: &mut Self::MatrixX) -> Result<(), HoloError> {
+    fn add_m(&self, alpha: f32, a: &Self::MatrixX, b: &mut Self::MatrixX) -> Result<(), HoloError> {
         unsafe {
-            cublas_call!(cuda_sys::cublas::cublasDaxpy_v2(
+            cublas_call!(cuda_sys::cublas::cublasSaxpy_v2(
                 self.handle,
                 (a.rows * a.cols) as _,
                 &alpha as _,
@@ -1155,18 +1179,53 @@ impl LinAlgBackend<Sphere> for CUDABackend {
         let alpha = make_complex(alpha.re, alpha.im);
         let beta = make_complex(beta.re, beta.im);
 
+        let m = if transa == cublasOperation_t_CUBLAS_OP_N {
+            a.len
+        } else {
+            1
+        };
+        if m != y.rows {
+            return Err(CUDABackendError::CuBLASError(
+                cuda_sys::cublas::cublasStatus_t::INVALID_VALUE,
+            )
+            .into());
+        }
+        let n = if transb == cublasOperation_t_CUBLAS_OP_N {
+            1
+        } else {
+            x.len
+        };
+        if n != y.cols {
+            return Err(CUDABackendError::CuBLASError(
+                cuda_sys::cublas::cublasStatus_t::INVALID_VALUE,
+            )
+            .into());
+        }
+        let ka = if transa == cublasOperation_t_CUBLAS_OP_N {
+            1
+        } else {
+            a.len
+        };
+        let kb = if transb == cublasOperation_t_CUBLAS_OP_N {
+            x.len
+        } else {
+            1
+        };
+        if ka != kb {
+            return Err(CUDABackendError::CuBLASError(
+                cuda_sys::cublas::cublasStatus_t::INVALID_VALUE,
+            )
+            .into());
+        }
+
         unsafe {
-            cublas_call!(cuda_sys::cublas::cublasZgemm_v2(
+            cublas_call!(cuda_sys::cublas::cublasCgemm_v2(
                 self.handle,
                 transa,
                 transb,
-                y.rows as _,
-                y.cols as _,
-                if transa == cublasOperation_t_CUBLAS_OP_N {
-                    1
-                } else {
-                    a.len
-                } as _,
+                m as _,
+                n as _,
+                ka as _,
                 &alpha as *const _ as _,
                 a.ptr as _,
                 a.len as _,
@@ -1203,7 +1262,7 @@ impl LinAlgBackend<Sphere> for CUDABackend {
             let bp = x.ptr;
             let cp = y.ptr;
 
-            cublas_call!(cuda_sys::cublas::cublasZgemv_v2(
+            cublas_call!(cuda_sys::cublas::cublasCgemv_v2(
                 self.handle,
                 trans,
                 m as _,
@@ -1239,7 +1298,7 @@ impl LinAlgBackend<Sphere> for CUDABackend {
         let beta = make_complex(beta.re, beta.im);
 
         unsafe {
-            cublas_call!(cuda_sys::cublas::cublasZgemm_v2(
+            cublas_call!(cuda_sys::cublas::cublasCgemm_v2(
                 self.handle,
                 transa,
                 transb,
@@ -1266,7 +1325,7 @@ impl LinAlgBackend<Sphere> for CUDABackend {
     fn pseudo_inverse_svd(
         &self,
         a: Self::MatrixXc,
-        alpha: f64,
+        alpha: f32,
         u: &mut Self::MatrixXc,
         s: &mut Self::MatrixXc,
         vt: &mut Self::MatrixXc,
@@ -1282,7 +1341,7 @@ impl LinAlgBackend<Sphere> for CUDABackend {
             let ldv = n;
 
             let s_size = m.min(n);
-            let ds = alloc_uninitialized!(f64, s_size);
+            let ds = alloc_uninitialized!(f32, s_size);
 
             let mut workspace_in_bytes_on_device: u64 = 0;
             let mut workspace_in_bytes_on_host: u64 = 0;
@@ -1293,18 +1352,18 @@ impl LinAlgBackend<Sphere> for CUDABackend {
                 0,
                 m as _,
                 n as _,
-                CUDA_C_64F,
+                CUDA_C_32F,
                 a.ptr as _,
                 lda as _,
-                CUDA_R_64F,
+                CUDA_R_32F,
                 ds as _,
-                CUDA_C_64F,
+                CUDA_C_32F,
                 u.ptr as _,
                 ldu as _,
-                CUDA_C_64F,
+                CUDA_C_32F,
                 vt.ptr as _,
                 ldv as _,
-                CUDA_C_64F,
+                CUDA_C_32F,
                 &mut workspace_in_bytes_on_device as _,
                 &mut workspace_in_bytes_on_host as _,
             ));
@@ -1328,18 +1387,18 @@ impl LinAlgBackend<Sphere> for CUDABackend {
                 0,
                 m as _,
                 n as _,
-                CUDA_C_64F,
+                CUDA_C_32F,
                 a.ptr as _,
                 lda as _,
-                CUDA_R_64F,
+                CUDA_R_32F,
                 ds as _,
-                CUDA_C_64F,
+                CUDA_C_32F,
                 u.ptr as _,
                 ldu as _,
-                CUDA_C_64F,
+                CUDA_C_32F,
                 vt.ptr as _,
                 ldv as _,
-                CUDA_C_64F,
+                CUDA_C_32F,
                 workspace_buffer_on_device as _,
                 workspace_in_bytes_on_device,
                 workspace_buffer_on_host as _,
@@ -1392,10 +1451,10 @@ impl LinAlgBackend<Sphere> for CUDABackend {
                 std::ptr::null_mut(),
                 cusolver::cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
                 n as _,
-                CUDA_R_64F,
+                CUDA_R_32F,
                 ap as _,
                 lda as _,
-                CUDA_R_64F,
+                CUDA_R_32F,
                 &mut workspace_in_bytes_on_device as _,
                 &mut workspace_in_bytes_on_host as _,
             ));
@@ -1416,10 +1475,10 @@ impl LinAlgBackend<Sphere> for CUDABackend {
                 std::ptr::null_mut(),
                 cusolver::cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
                 n as _,
-                CUDA_R_64F,
+                CUDA_R_32F,
                 ap as _,
                 lda as _,
-                CUDA_R_64F,
+                CUDA_R_32F,
                 workspace_buffer_on_device as _,
                 workspace_in_bytes_on_device,
                 workspace_buffer_on_host as _,
@@ -1432,10 +1491,10 @@ impl LinAlgBackend<Sphere> for CUDABackend {
                 cusolver::cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
                 n as _,
                 1,
-                CUDA_R_64F,
+                CUDA_R_32F,
                 ap as _,
                 lda as _,
-                CUDA_R_64F,
+                CUDA_R_32F,
                 bp as _,
                 ldb as _,
                 info as _,
@@ -1463,10 +1522,10 @@ impl LinAlgBackend<Sphere> for CUDABackend {
                 std::ptr::null_mut(),
                 cusolver::cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
                 n as _,
-                CUDA_C_64F,
+                CUDA_C_32F,
                 ap as _,
                 lda as _,
-                CUDA_C_64F,
+                CUDA_C_32F,
                 &mut workspace_in_bytes_on_device as _,
                 &mut workspace_in_bytes_on_host as _,
             ));
@@ -1487,10 +1546,10 @@ impl LinAlgBackend<Sphere> for CUDABackend {
                 std::ptr::null_mut(),
                 cusolver::cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
                 n as _,
-                CUDA_C_64F,
+                CUDA_C_32F,
                 ap as _,
                 lda as _,
-                CUDA_C_64F,
+                CUDA_C_32F,
                 workspace_buffer_on_device as _,
                 workspace_in_bytes_on_device,
                 workspace_buffer_on_host as _,
@@ -1503,10 +1562,10 @@ impl LinAlgBackend<Sphere> for CUDABackend {
                 cusolver::cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
                 n as _,
                 1,
-                CUDA_C_64F,
+                CUDA_C_32F,
                 ap as _,
                 lda as _,
-                CUDA_C_64F,
+                CUDA_C_32F,
                 bp as _,
                 ldb as _,
                 info as _,

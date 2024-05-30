@@ -72,9 +72,7 @@ dependencies = [
 
 [[package]]
 name = "autd3"
-version = "25.0.0-rc.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "19a2543a9309da31b5ce3c7f86af364f99ae6f0e6c593f1aad466057ffb644cb"
+version = "25.0.0-rc.6"
 dependencies = [
  "autd3-driver",
  "autd3-firmware-emulator",
@@ -106,9 +104,7 @@ dependencies = [
 
 [[package]]
 name = "autd3-derive"
-version = "25.0.0-rc.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "270c05c04923bc145578c6fd0dc79ebac837a1408d2b9d037fc1a4623a75b8b2"
+version = "25.0.0-rc.6"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -118,9 +114,7 @@ dependencies = [
 
 [[package]]
 name = "autd3-driver"
-version = "25.0.0-rc.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92390a4d10a8176a005a63232f7adbf28cfb30df8d54bd333900eab09c26d3b6"
+version = "25.0.0-rc.6"
 dependencies = [
  "async-trait",
  "autd3-derive",
@@ -141,9 +135,7 @@ dependencies = [
 
 [[package]]
 name = "autd3-firmware-emulator"
-version = "25.0.0-rc.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a3d408eb16a58b4bfe3e1ff86deef20e84739f68579a3b743c485e6f5a24aaf1"
+version = "25.0.0-rc.6"
 dependencies = [
  "autd3-driver",
  "num-integer",
@@ -153,9 +145,7 @@ dependencies = [
 
 [[package]]
 name = "autd3-gain-holo"
-version = "25.0.0-rc.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fb9db99197de0688c0bc6d2b18b38d5f9ddbd4e6e61971d0220636803b89cc93"
+version = "25.0.0-rc.6"
 dependencies = [
  "approx",
  "assert_approx_eq",
