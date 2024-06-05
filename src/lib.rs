@@ -34,7 +34,6 @@ extern "C" {
         positions: *const f32,
         foci: *const f32,
         wavenums: *const f32,
-        attens: *const f32,
         row: u32,
         col: u32,
         dst: *mut CuComplex,
@@ -345,7 +344,6 @@ impl LinAlgBackend<Sphere> for CUDABackend {
 
         let mut positions = Vec::with_capacity(cols * 3);
         let mut wavenums = Vec::with_capacity(cols);
-        let mut attens = Vec::with_capacity(cols);
 
         if let Some(filter) = filter {
             geometry.devices().for_each(|dev| {
@@ -358,7 +356,6 @@ impl LinAlgBackend<Sphere> for CUDABackend {
                             positions.push(p.y);
                             positions.push(p.z);
                             wavenums.push(wavenumber);
-                            attens.push(dev.attenuation);
                         }
                     })
                 }
@@ -372,7 +369,6 @@ impl LinAlgBackend<Sphere> for CUDABackend {
                     positions.push(p.y);
                     positions.push(p.z);
                     wavenums.push(wavenumber);
-                    attens.push(dev.attenuation);
                 })
             });
         }
@@ -386,14 +382,11 @@ impl LinAlgBackend<Sphere> for CUDABackend {
             cpy_host_to_device!(f32, foci.as_ptr(), p_foci, foci.len());
             let p_wavenums = alloc_uninitialized!(f32, wavenums.len());
             cpy_host_to_device!(f32, wavenums.as_ptr(), p_wavenums, wavenums.len());
-            let p_attens = alloc_uninitialized!(f32, attens.len());
-            cpy_host_to_device!(f32, attens.as_ptr(), p_attens, attens.len());
             let ptr = alloc_uninitialized!(CuComplex, rows, cols);
             cu_call!(cu_generate_propagation_matrix(
                 p_positions,
                 p_foci,
                 p_wavenums,
-                p_attens,
                 rows as _,
                 cols as _,
                 ptr

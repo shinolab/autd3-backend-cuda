@@ -13,11 +13,7 @@ fn main() {
     build
         .cuda(true)
         .flag("-cudart=shared")
-        .flag("-arch=sm_52")
-        .flag("-gencode=arch=compute_52,code=sm_52")
-        .flag("-gencode=arch=compute_60,code=sm_60")
-        .flag("-gencode=arch=compute_61,code=sm_61")
-        .flag("-gencode=arch=compute_70,code=sm_70")
+        .flag("-arch=sm_75")
         .flag("-gencode=arch=compute_75,code=sm_75")
         .flag("-gencode=arch=compute_80,code=sm_80")
         .flag("-gencode=arch=compute_86,code=sm_86")

@@ -88,8 +88,7 @@ __global__ void reciprocal_kernel(const cuFloatComplex *a, const uint32_t row, c
   b[idx] = make_cuFloatComplex(x, y);
 }
 
-__global__ void hadamard_product_kernel(const cuFloatComplex *a, const cuFloatComplex *b, const uint32_t row, const uint32_t col,
-                                        cuFloatComplex *c) {
+__global__ void hadamard_product_kernel(const cuFloatComplex *a, const cuFloatComplex *b, const uint32_t row, const uint32_t col, cuFloatComplex *c) {
   unsigned int xi = blockIdx.x * blockDim.x + threadIdx.x;
   unsigned int yi = blockIdx.y * blockDim.y + threadIdx.y;
   if (xi >= col || yi >= row) return;
@@ -214,8 +213,8 @@ __global__ void col_sum_kernel(const float *din, uint32_t m, uint32_t n, float *
   dout[row] = sum;
 }
 
-__global__ void generate_propagation_matrix_kernel(const float *positions, const float *foci, const float *wavenums, const float *attens,
-                                                   const uint32_t row, const uint32_t col, cuFloatComplex *dst) {
+__global__ void generate_propagation_matrix_kernel(const float *positions, const float *foci, const float *wavenums, const uint32_t row,
+                                                   const uint32_t col, cuFloatComplex *dst) {
   unsigned int xi = blockIdx.x * blockDim.x + threadIdx.x;
   unsigned int yi = blockIdx.y * blockDim.y + threadIdx.y;
   if (xi >= col || yi >= row) return;
@@ -224,7 +223,7 @@ __global__ void generate_propagation_matrix_kernel(const float *positions, const
   float yd = foci[3 * yi + 1] - positions[3 * xi + 1];
   float zd = foci[3 * yi + 2] - positions[3 * xi + 2];
   float dist = sqrt(xd * xd + yd * yd + zd * zd);
-  float r = T4010A1_AMP * exp(-dist * attens[xi]) / dist;
+  float r = T4010A1_AMP / dist;
   float phase = -wavenums[xi] * dist;
   dst[yi + xi * row] = make_cuFloatComplex(r * cos(phase), r * sin(phase));
 }
@@ -355,11 +354,11 @@ void cu_reduce_col(const float *mat, const uint32_t m, const uint32_t n, float *
   col_sum_kernel<<<grid, block>>>(mat, m, n, result);
 }
 
-void cu_generate_propagation_matrix(const float *positions, const float *foci, const float *wavenums, const float *attens, const uint32_t row,
-                                    const uint32_t col, cuFloatComplex *dst) {
+void cu_generate_propagation_matrix(const float *positions, const float *foci, const float *wavenums, const uint32_t row, const uint32_t col,
+                                    cuFloatComplex *dst) {
   dim3 block(BLOCK_SIZE, BLOCK_SIZE, 1);
   dim3 grid((col - 1) / BLOCK_SIZE + 1, (row - 1) / BLOCK_SIZE + 1, 1);
-  generate_propagation_matrix_kernel<<<grid, block>>>(positions, foci, wavenums, attens, row, col, dst);
+  generate_propagation_matrix_kernel<<<grid, block>>>(positions, foci, wavenums, row, col, dst);
 }
 
 #ifdef __cplusplus
