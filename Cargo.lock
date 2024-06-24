@@ -72,13 +72,14 @@ dependencies = [
 
 [[package]]
 name = "autd3"
-version = "26.0.0-alpha.0"
+version = "26.0.0-beta.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f6d12019c8744ed268a531302b0e1c154b714577fb4d15b7045e9e9ecd93345"
+checksum = "f429d7c7a8ed9a056550fe6126799b1c2f570e9143ced98386c1bb6f70121731"
 dependencies = [
  "autd3-driver",
  "autd3-firmware-emulator",
  "bitvec",
+ "derivative",
  "derive_more",
  "num",
  "thiserror",
@@ -88,7 +89,7 @@ dependencies = [
 
 [[package]]
 name = "autd3-backend-cuda"
-version = "26.0.0-alpha.0"
+version = "26.0.0-beta.0"
 dependencies = [
  "anyhow",
  "autd3",
@@ -107,9 +108,9 @@ dependencies = [
 
 [[package]]
 name = "autd3-derive"
-version = "26.0.0-alpha.0"
+version = "26.0.0-beta.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d237fff9afba60b2f2c5a9bfd4ef488fb2475d3476320fabd08b3f62841b9bc"
+checksum = "b1e02bff137a10e14bd8f7b0ee2065d46ce184df6ea0e580625e10972691cf68"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -119,9 +120,9 @@ dependencies = [
 
 [[package]]
 name = "autd3-driver"
-version = "26.0.0-alpha.0"
+version = "26.0.0-beta.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "558924ff842f4d308d1d5940c249b98b4f94093fe21a726c430afa0cd03eb697"
+checksum = "863b24bc2356982c4bbbf5d153e7edad7fe9323f4a2a33f699ad5b4c92825b36"
 dependencies = [
  "async-trait",
  "autd3-derive",
@@ -134,6 +135,7 @@ dependencies = [
  "nalgebra",
  "num-complex",
  "rayon",
+ "temp-env",
  "thiserror",
  "time",
  "tokio",
@@ -144,9 +146,9 @@ dependencies = [
 
 [[package]]
 name = "autd3-firmware-emulator"
-version = "26.0.0-alpha.0"
+version = "26.0.0-beta.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c7295da3a57d42af2e44d78cbda81c445a29aa22ac5706257bec1edb1e92532"
+checksum = "cb88dd0b400cc7464fbffa8db325be797f7a2997770eb46532653cafeb83ae1f"
 dependencies = [
  "autd3-driver",
  "num-integer",
@@ -156,9 +158,9 @@ dependencies = [
 
 [[package]]
 name = "autd3-gain-holo"
-version = "26.0.0-alpha.0"
+version = "26.0.0-beta.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a954250330a92729c73f9fb0bb28603926e928252059f6508d269b375167404"
+checksum = "2891617a28d07a0aa1571dc525764ed6a1308e6d3ad6671a99035a0e2f7e7c9d"
 dependencies = [
  "approx",
  "assert_approx_eq",
@@ -403,6 +405,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "derivative"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fcc3dd5e9e9c0b295d6e1e4d811fb6f157d5ffd784b8d202fc62eac8035a770b"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "derive_more"
 version = "0.99.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -618,6 +631,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ae743338b92ff9146ce83992f766a31066a91a8c84a45e0e9f21e7cf6de6d346"
 
 [[package]]
+name = "lock_api"
+version = "0.4.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07af8b9cdd281b7915f413fa73f29ebd5d55d0d3f0155584dade1ff18cea1b17"
+dependencies = [
+ "autocfg",
+ "scopeguard",
+]
+
+[[package]]
 name = "log"
 version = "0.4.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -790,6 +813,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ab1bc2a289d34bd04a330323ac98a1b4bc82c9d9fcb1e66b63caa84da26b575"
 
 [[package]]
+name = "parking_lot"
+version = "0.12.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1bf18183cf54e8d6059647fc3063646a1801cf30896933ec2311622cc4b9a27"
+dependencies = [
+ "lock_api",
+ "parking_lot_core",
+]
+
+[[package]]
+name = "parking_lot_core"
+version = "0.9.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e401f977ab385c9e4e3ab30627d6f26d00e2c73eef317493c4ec6d468726cf8"
+dependencies = [
+ "cfg-if",
+ "libc",
+ "redox_syscall",
+ "smallvec",
+ "windows-targets",
+]
+
+[[package]]
 name = "paste"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -928,6 +974,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "redox_syscall"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c82cf8cff14456045f55ec4241383baeff27af886adb72ffb2162f99911de0fd"
+dependencies = [
+ "bitflags",
+]
+
+[[package]]
 name = "regex"
 version = "1.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1031,6 +1086,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "scopeguard"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
+
+[[package]]
 name = "semver"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1090,6 +1151,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "smallvec"
+version = "1.13.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c5e1a9a646d36c3599cd173a41282daf47c44583ad367b8e6837255952e5c67"
+
+[[package]]
 name = "syn"
 version = "1.0.109"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1116,6 +1183,15 @@ name = "tap"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
+
+[[package]]
+name = "temp-env"
+version = "0.3.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96374855068f47402c3121c6eed88d29cb1de8f3ab27090e273e420bdabcf050"
+dependencies = [
+ "parking_lot",
+]
 
 [[package]]
 name = "thiserror"
