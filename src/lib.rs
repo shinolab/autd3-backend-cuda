@@ -39,7 +39,6 @@ extern "C" {
         dst: *mut CuComplex,
     );
 
-    fn cu_normalize(x: *const CuComplex, row: u32, col: u32, y: *mut CuComplex);
     fn cu_scaled_to(
         a: *const CuComplex,
         b: *const CuComplex,
@@ -61,12 +60,9 @@ extern "C" {
         z: *mut CuComplex,
     );
 
-    fn cu_abs(a: *const CuComplex, row: u32, col: u32, b: *mut f32);
     fn cu_norm_squared(a: *const CuComplex, row: u32, col: u32, b: *mut f32);
-    fn cu_sqrt(a: *const f32, row: u32, col: u32, b: *mut f32);
     fn cu_make_complex(re: *const f32, row: u32, col: u32, dst: *mut CuComplex);
     fn cu_make_complex2(re: *const f32, im: *const f32, row: u32, col: u32, dst: *mut CuComplex);
-    fn cu_pow(a: *const f32, p: f32, row: u32, col: u32, b: *mut f32);
 
     fn cu_conj(a: *const CuComplex, row: u32, col: u32, b: *mut CuComplex);
 
@@ -712,18 +708,6 @@ impl LinAlgBackend<Sphere> for CUDABackend {
         Ok(())
     }
 
-    fn get_diagonal_c(&self, a: &Self::MatrixXc, v: &mut Self::VectorXc) -> Result<(), HoloError> {
-        unsafe {
-            cu_call!(cu_get_diagonal_c(
-                a.ptr as _,
-                a.rows as _,
-                a.cols as _,
-                v.ptr as _
-            ));
-        }
-        Ok(())
-    }
-
     fn create_diagonal(&self, v: &Self::VectorX, a: &mut Self::MatrixX) -> Result<(), HoloError> {
         unsafe {
             cuda_call!(cuda_sys::cudart::cudaMemset(
@@ -764,13 +748,6 @@ impl LinAlgBackend<Sphere> for CUDABackend {
         Ok(())
     }
 
-    fn abs_cv(&self, a: &Self::VectorXc, b: &mut Self::VectorX) -> Result<(), HoloError> {
-        unsafe {
-            cu_call!(cu_abs(a.ptr as _, a.len as _, 1, b.ptr as _));
-        }
-        Ok(())
-    }
-
     fn norm_squared_cv(&self, a: &Self::VectorXc, b: &mut Self::VectorX) -> Result<(), HoloError> {
         unsafe {
             cu_call!(cu_norm_squared(a.ptr as _, a.len as _, 1, b.ptr as _));
@@ -788,19 +765,6 @@ impl LinAlgBackend<Sphere> for CUDABackend {
     fn imag_cm(&self, a: &Self::MatrixXc, b: &mut Self::MatrixX) -> Result<(), HoloError> {
         unsafe {
             cu_call!(cu_imag(a.ptr as _, a.rows as _, a.cols as _, b.ptr as _));
-        }
-        Ok(())
-    }
-
-    fn scale_assign_v(&self, a: f32, b: &mut Self::VectorX) -> Result<(), HoloError> {
-        unsafe {
-            cublas_call!(cuda_sys::cublas::cublasSscal_v2(
-                self.handle,
-                b.len as _,
-                &a as _,
-                b.ptr as _,
-                1
-            ));
         }
         Ok(())
     }
@@ -823,24 +787,6 @@ impl LinAlgBackend<Sphere> for CUDABackend {
         Ok(())
     }
 
-    fn scale_assign_cm(
-        &self,
-        a: autd3_gain_holo::Complex,
-        b: &mut Self::MatrixXc,
-    ) -> Result<(), HoloError> {
-        let a = make_complex(a.re, a.im);
-        unsafe {
-            cublas_call!(cuda_sys::cublas::cublasCscal_v2(
-                self.handle,
-                (b.cols * b.rows) as _,
-                &a as *const _ as _,
-                b.ptr as _,
-                1
-            ));
-        }
-        Ok(())
-    }
-
     fn conj_assign_v(&self, b: &mut Self::VectorXc) -> Result<(), HoloError> {
         unsafe {
             cu_call!(cu_conj(b.ptr as _, b.len as _, 1, b.ptr as _));
@@ -848,85 +794,9 @@ impl LinAlgBackend<Sphere> for CUDABackend {
         Ok(())
     }
 
-    fn sqrt_assign_v(&self, v: &mut Self::VectorX) -> Result<(), HoloError> {
-        unsafe {
-            cu_call!(cu_sqrt(v.ptr as _, v.len as _, 1, v.ptr as _));
-        }
-        Ok(())
-    }
-
-    fn normalize_assign_cv(&self, v: &mut Self::VectorXc) -> Result<(), HoloError> {
-        unsafe {
-            cu_call!(cu_normalize(v.ptr as _, v.len as _, 1, v.ptr as _));
-        }
-        Ok(())
-    }
-
-    fn reciprocal_assign_c(&self, v: &mut Self::VectorXc) -> Result<(), HoloError> {
-        unsafe {
-            cu_call!(cu_reciprocal(v.ptr as _, v.len as _, 1, v.ptr as _));
-        }
-        Ok(())
-    }
-
-    fn pow_assign_v(&self, a: f32, v: &mut Self::VectorX) -> Result<(), HoloError> {
-        unsafe {
-            cu_call!(cu_pow(v.ptr as _, a, v.len as _, 1, v.ptr as _));
-        }
-        Ok(())
-    }
-
     fn exp_assign_cv(&self, v: &mut Self::VectorXc) -> Result<(), HoloError> {
         unsafe {
             cu_call!(cu_exp(v.ptr as _, v.len as _, 1, v.ptr as _));
-        }
-        Ok(())
-    }
-
-    fn concat_row_cm(
-        &self,
-        a: &Self::MatrixXc,
-        b: &Self::MatrixXc,
-        c: &mut Self::MatrixXc,
-    ) -> Result<(), HoloError> {
-        unsafe {
-            for i in 0..a.cols {
-                cuda_call!(cuda_sys::cudart::cudaMemcpy(
-                    c.ptr.add(i * (a.rows + b.rows)) as _,
-                    a.ptr.add(i * a.rows) as _,
-                    std::mem::size_of::<CuComplex>() * a.rows,
-                    cuda_sys::cudart::cudaMemcpyKind_cudaMemcpyDeviceToDevice,
-                ));
-                cuda_call!(cuda_sys::cudart::cudaMemcpy(
-                    c.ptr.add(i * (a.rows + b.rows) + a.rows) as _,
-                    b.ptr.add(i * b.rows) as _,
-                    std::mem::size_of::<CuComplex>() * b.rows,
-                    cuda_sys::cudart::cudaMemcpyKind_cudaMemcpyDeviceToDevice,
-                ));
-            }
-        }
-        Ok(())
-    }
-
-    fn concat_col_cv(
-        &self,
-        a: &Self::VectorXc,
-        b: &Self::VectorXc,
-        c: &mut Self::VectorXc,
-    ) -> Result<(), HoloError> {
-        unsafe {
-            cuda_call!(cuda_sys::cudart::cudaMemcpy(
-                c.ptr as _,
-                a.ptr as _,
-                a.len * std::mem::size_of::<CuComplex>(),
-                cuda_sys::cudart::cudaMemcpyKind_cudaMemcpyDeviceToDevice
-            ));
-            cuda_call!(cuda_sys::cudart::cudaMemcpy(
-                c.ptr.add(a.len) as _,
-                b.ptr as _,
-                b.len * std::mem::size_of::<CuComplex>(),
-                cuda_sys::cudart::cudaMemcpyKind_cudaMemcpyDeviceToDevice
-            ));
         }
         Ok(())
     }
@@ -1044,33 +914,6 @@ impl LinAlgBackend<Sphere> for CUDABackend {
                 len: m.cols,
             })
         }
-    }
-
-    fn hadamard_product_assign_cv(
-        &self,
-        x: &Self::VectorXc,
-        y: &mut Self::VectorXc,
-    ) -> Result<(), HoloError> {
-        unsafe {
-            cu_call!(cu_hadamard_product(
-                x.ptr as _, y.ptr as _, x.len as _, 1, y.ptr as _
-            ));
-        }
-        Ok(())
-    }
-
-    fn hadamard_product_cv(
-        &self,
-        x: &Self::VectorXc,
-        y: &Self::VectorXc,
-        z: &mut Self::VectorXc,
-    ) -> Result<(), HoloError> {
-        unsafe {
-            cu_call!(cu_hadamard_product(
-                x.ptr as _, y.ptr as _, x.len as _, 1, z.ptr as _
-            ));
-        }
-        Ok(())
     }
 
     fn hadamard_product_cm(
@@ -1499,77 +1342,6 @@ impl LinAlgBackend<Sphere> for CUDABackend {
         Ok(())
     }
 
-    fn solve_inplace_h(&self, a: Self::MatrixXc, x: &mut Self::VectorXc) -> Result<(), HoloError> {
-        unsafe {
-            let n = a.cols;
-            let lda = a.rows;
-            let ldb = x.len;
-
-            let ap = a.ptr;
-            let bp = x.ptr;
-
-            let mut workspace_in_bytes_on_device: u64 = 0;
-            let mut workspace_in_bytes_on_host: u64 = 0;
-            cusolver_call!(cusolver::cusolverDnXpotrf_bufferSize(
-                self.handle_s,
-                std::ptr::null_mut(),
-                cusolver::cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
-                n as _,
-                CUDA_C_32F,
-                ap as _,
-                lda as _,
-                CUDA_C_32F,
-                &mut workspace_in_bytes_on_device as _,
-                &mut workspace_in_bytes_on_host as _,
-            ));
-
-            let workspace_buffer_on_device =
-                alloc_uninitialized!(u8, workspace_in_bytes_on_device as usize);
-            let mut workspace_buffer_on_host_v = vec![0u8; workspace_in_bytes_on_host as usize];
-            let workspace_buffer_on_host = if workspace_in_bytes_on_host > 0 {
-                workspace_buffer_on_host_v.as_mut_ptr()
-            } else {
-                std::ptr::null_mut()
-            };
-
-            let info = alloc_uninitialized!(i32, 1);
-
-            cusolver_call!(cusolver::cusolverDnXpotrf(
-                self.handle_s,
-                std::ptr::null_mut(),
-                cusolver::cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
-                n as _,
-                CUDA_C_32F,
-                ap as _,
-                lda as _,
-                CUDA_C_32F,
-                workspace_buffer_on_device as _,
-                workspace_in_bytes_on_device,
-                workspace_buffer_on_host as _,
-                workspace_in_bytes_on_host,
-                info as _,
-            ));
-            cusolver_call!(cusolver::cusolverDnXpotrs(
-                self.handle_s,
-                std::ptr::null_mut(),
-                cusolver::cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
-                n as _,
-                1,
-                CUDA_C_32F,
-                ap as _,
-                lda as _,
-                CUDA_C_32F,
-                bp as _,
-                ldb as _,
-                info as _,
-            ));
-
-            free!(info);
-            free!(workspace_buffer_on_device);
-        }
-        Ok(())
-    }
-
     fn reduce_col(&self, a: &Self::MatrixX, b: &mut Self::VectorX) -> Result<(), HoloError> {
         unsafe {
             cu_call!(cu_reduce_col(
@@ -1631,9 +1403,23 @@ impl LinAlgBackend<Sphere> for CUDABackend {
             &mut tmp,
         )?;
 
-        let mut denominator = self.alloc_cv(n)?;
-        self.get_diagonal_c(&tmp, &mut denominator)?;
-        self.reciprocal_assign_c(&mut denominator)?;
+        let denominator = self.alloc_cv(n)?;
+        unsafe {
+            cu_call!(cu_get_diagonal_c(
+                tmp.ptr as _,
+                tmp.rows as _,
+                tmp.cols as _,
+                denominator.ptr as _
+            ));
+        }
+        unsafe {
+            cu_call!(cu_reciprocal(
+                denominator.ptr as _,
+                denominator.len as _,
+                1,
+                denominator.ptr as _
+            ));
+        }
 
         self.create_diagonal_c(&denominator, &mut tmp)?;
 

@@ -24,14 +24,6 @@ __device__ cuFloatComplex divcr(const cuFloatComplex x, const float y) {
   return make_cuFloatComplex(r, i);
 }
 
-__global__ void normalize_kernel(const cuFloatComplex *x, uint32_t row, uint32_t col, cuFloatComplex *y) {
-  unsigned int xi = blockIdx.x * blockDim.x + threadIdx.x;
-  unsigned int yi = blockIdx.y * blockDim.y + threadIdx.y;
-  if (xi >= col || yi >= row) return;
-  unsigned int i = yi + xi * row;
-  y[i] = divcr(x[i], absc(x[i]));
-}
-
 __global__ void scaled_to_kernel(const cuFloatComplex *a, const cuFloatComplex *b, uint32_t row, uint32_t col, cuFloatComplex *c) {
   unsigned int xi = blockIdx.x * blockDim.x + threadIdx.x;
   unsigned int yi = blockIdx.y * blockDim.y + threadIdx.y;
@@ -97,15 +89,6 @@ __global__ void hadamard_product_kernel(const cuFloatComplex *a, const cuFloatCo
   c[idx] = mulc(a[idx], b[idx]);
 }
 
-__global__ void abs_kernel(const cuFloatComplex *a, const uint32_t row, const uint32_t col, float *b) {
-  unsigned int xi = blockIdx.x * blockDim.x + threadIdx.x;
-  unsigned int yi = blockIdx.y * blockDim.y + threadIdx.y;
-  if (xi >= col || yi >= row) return;
-
-  unsigned int idx = yi + xi * row;
-  b[idx] = absc(a[idx]);
-}
-
 __global__ void norm_squared_kernel(const cuFloatComplex *a, const uint32_t row, const uint32_t col, float *b) {
   unsigned int xi = blockIdx.x * blockDim.x + threadIdx.x;
   unsigned int yi = blockIdx.y * blockDim.y + threadIdx.y;
@@ -113,15 +96,6 @@ __global__ void norm_squared_kernel(const cuFloatComplex *a, const uint32_t row,
 
   unsigned int idx = yi + xi * row;
   b[idx] = absc2(a[idx]);
-}
-
-__global__ void sqrt_kernel(const float *a, const uint32_t row, const uint32_t col, float *b) {
-  unsigned int xi = blockIdx.x * blockDim.x + threadIdx.x;
-  unsigned int yi = blockIdx.y * blockDim.y + threadIdx.y;
-  if (xi >= col || yi >= row) return;
-
-  unsigned int idx = yi + xi * row;
-  b[idx] = sqrt(a[idx]);
 }
 
 __global__ void make_complex_kernel(const float *re, const uint32_t row, const uint32_t col, cuFloatComplex *dst) {
@@ -140,15 +114,6 @@ __global__ void make_complex2_kernel(const float *re, const float *im, const uin
 
   unsigned int idx = yi + xi * row;
   dst[idx] = make_cuFloatComplex(re[idx], im[idx]);
-}
-
-__global__ void pow_kernel(const float *a, const float p, const uint32_t row, const uint32_t col, float *b) {
-  unsigned int xi = blockIdx.x * blockDim.x + threadIdx.x;
-  unsigned int yi = blockIdx.y * blockDim.y + threadIdx.y;
-  if (xi >= col || yi >= row) return;
-
-  unsigned int idx = yi + xi * row;
-  b[idx] = pow(a[idx], p);
 }
 
 __global__ void conj_kernel(const cuFloatComplex *a, const uint32_t row, const uint32_t col, cuFloatComplex *b) {
@@ -234,12 +199,6 @@ extern "C" {
 
 #define BLOCK_SIZE (32)
 
-void cu_normalize(const cuFloatComplex *x, const uint32_t row, const uint32_t col, cuFloatComplex *y) {
-  dim3 block(BLOCK_SIZE, BLOCK_SIZE, 1);
-  dim3 grid((col - 1) / BLOCK_SIZE + 1, (row - 1) / BLOCK_SIZE + 1, 1);
-  normalize_kernel<<<grid, block>>>(x, row, col, y);
-}
-
 void cu_scaled_to(const cuFloatComplex *a, const cuFloatComplex *b, const uint32_t row, const uint32_t col, cuFloatComplex *c) {
   dim3 block(BLOCK_SIZE, BLOCK_SIZE, 1);
   dim3 grid((col - 1) / BLOCK_SIZE + 1, (row - 1) / BLOCK_SIZE + 1, 1);
@@ -282,22 +241,10 @@ void cu_hadamard_product(const cuFloatComplex *a, const cuFloatComplex *b, const
   hadamard_product_kernel<<<grid, block>>>(a, b, row, col, c);
 }
 
-void cu_abs(const cuFloatComplex *a, const uint32_t row, const uint32_t col, float *b) {
-  dim3 block(BLOCK_SIZE, BLOCK_SIZE, 1);
-  dim3 grid((col - 1) / BLOCK_SIZE + 1, (row - 1) / BLOCK_SIZE + 1, 1);
-  abs_kernel<<<grid, block>>>(a, row, col, b);
-}
-
 void cu_norm_squared(const cuFloatComplex *a, const uint32_t row, const uint32_t col, float *b) {
   dim3 block(BLOCK_SIZE, BLOCK_SIZE, 1);
   dim3 grid((col - 1) / BLOCK_SIZE + 1, (row - 1) / BLOCK_SIZE + 1, 1);
   norm_squared_kernel<<<grid, block>>>(a, row, col, b);
-}
-
-void cu_sqrt(const float *a, const uint32_t row, const uint32_t col, float *b) {
-  dim3 block(BLOCK_SIZE, BLOCK_SIZE, 1);
-  dim3 grid((col - 1) / BLOCK_SIZE + 1, (row - 1) / BLOCK_SIZE + 1, 1);
-  sqrt_kernel<<<grid, block>>>(a, row, col, b);
 }
 
 void cu_make_complex(const float *re, const uint32_t row, const uint32_t col, cuFloatComplex *dst) {
@@ -310,12 +257,6 @@ void cu_make_complex2(const float *re, const float *im, const uint32_t row, cons
   dim3 block(BLOCK_SIZE, BLOCK_SIZE, 1);
   dim3 grid((col - 1) / BLOCK_SIZE + 1, (row - 1) / BLOCK_SIZE + 1, 1);
   make_complex2_kernel<<<grid, block>>>(re, im, row, col, dst);
-}
-
-void cu_pow(const float *a, const float p, const uint32_t row, const uint32_t col, float *b) {
-  dim3 block(BLOCK_SIZE, BLOCK_SIZE, 1);
-  dim3 grid((col - 1) / BLOCK_SIZE + 1, (row - 1) / BLOCK_SIZE + 1, 1);
-  pow_kernel<<<grid, block>>>(a, p, row, col, b);
 }
 
 void cu_conj(const cuFloatComplex *a, const uint32_t row, const uint32_t col, cuFloatComplex *b) {
