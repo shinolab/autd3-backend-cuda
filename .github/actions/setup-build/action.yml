@@ -12,10 +12,9 @@ runs:
       with:
         toolchain: 'stable'
 
-    - uses: Jimver/cuda-toolkit@v0.2.15
+    - uses: Jimver/cuda-toolkit@v0.2.16
       if: inputs.os == 'windows-latest'
       with:
-        cuda: '12.2.0'
         method: 'network'
         sub-packages: '["nvcc", "cudart", "cublas_dev", "cusolver_dev"]'
     - name: install cuda
@@ -25,5 +24,5 @@ runs:
         wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
         sudo dpkg -i cuda-keyring_1.1-1_all.deb
         sudo apt-get update
-        sudo apt-get -y install cuda-nvcc-12-2 libcublas-dev-12-2 libcusolver-dev-12-2
+        sudo apt-get -y install cuda-nvcc-12-5 libcublas-dev-12-5 libcusolver-dev-12-5
         echo "/usr/local/cuda/bin" >> $GITHUB_PATH
