@@ -72,9 +72,9 @@ dependencies = [
 
 [[package]]
 name = "autd3"
-version = "26.0.0-rc.0"
+version = "26.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d4e04b7deadedfa61c3aff0731f223e4e6d25a9dce59c6c225cc07ebfdad3a26"
+checksum = "0b8f29afe60d592c526d2323e5890b94acb54624981cd58593b86801c527d21d"
 dependencies = [
  "autd3-driver",
  "autd3-firmware-emulator",
@@ -89,7 +89,7 @@ dependencies = [
 
 [[package]]
 name = "autd3-backend-cuda"
-version = "26.0.0-rc.0"
+version = "26.0.0"
 dependencies = [
  "anyhow",
  "autd3",
@@ -108,9 +108,9 @@ dependencies = [
 
 [[package]]
 name = "autd3-derive"
-version = "26.0.0-rc.0"
+version = "26.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b07bedb230dc418143168122f0fe124467d2532e144d5e3e0529297b91ca8d0"
+checksum = "71446b65be3e285798d90032d9525c177d1375eb5029a56b612599929671ee5b"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -120,9 +120,9 @@ dependencies = [
 
 [[package]]
 name = "autd3-driver"
-version = "26.0.0-rc.0"
+version = "26.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b99618328cda4570399c25a40ea9bc5b2c91f5a078a2911b102284c661791c10"
+checksum = "695ea3583a0102b2ef3c6fa499b59e57358809bd9e9ee1253c189481c7cfc93e"
 dependencies = [
  "async-trait",
  "autd3-derive",
@@ -145,9 +145,9 @@ dependencies = [
 
 [[package]]
 name = "autd3-firmware-emulator"
-version = "26.0.0-rc.0"
+version = "26.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d642a1716bcde67b8a2afd41db12c93fb87c0249e3f8e2f35145996441e5617b"
+checksum = "e0da4c338a2f0469504b2427a6c10f4cb4ae07e069ca48b3c887099ea02741fe"
 dependencies = [
  "autd3-driver",
  "num-integer",
@@ -157,9 +157,9 @@ dependencies = [
 
 [[package]]
 name = "autd3-gain-holo"
-version = "26.0.0-rc.0"
+version = "26.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "467e488ea1b4a95dd677b442ae7ec2839f068890dfcb494398b1d00452b47bca"
+checksum = "54775dfe9d1b68354b4fa3b264070e21e2d092fa84e35f340727d3f4a2a4ab5c"
 dependencies = [
  "approx",
  "assert_approx_eq",
