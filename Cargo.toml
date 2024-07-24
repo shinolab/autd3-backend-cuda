@@ -15,7 +15,7 @@ autd3-driver = { version = "27.0.0-alpha.1" }
 autd3-gain-holo = { version = "27.0.0-alpha.1" }
 bit-vec = "0.8.0"
 cuda-sys = "0.2.0"
-nalgebra = { version = "0.32.1", default-features = false, features = ["std"] }
+nalgebra = { version = "0.33.0", default-features = false, features = ["std"] }
 rand = "0.8.5"
 thiserror = "1.0.31"
 
