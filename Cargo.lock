@@ -72,9 +72,9 @@ dependencies = [
 
 [[package]]
 name = "autd3"
-version = "27.0.0-alpha.0"
+version = "27.0.0-alpha.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7dec7d9c3b893d6ede6a49ae1b23f689ae0031613c1aea22b4f19fc69153efc8"
+checksum = "f08255796466ca10d1b5e9532a7b3b795497a3e1858fdc1eb894ae220e8df79b"
 dependencies = [
  "autd3-driver",
  "autd3-firmware-emulator",
@@ -89,7 +89,7 @@ dependencies = [
 
 [[package]]
 name = "autd3-backend-cuda"
-version = "27.0.0-alpha.0"
+version = "27.0.0-alpha.1"
 dependencies = [
  "anyhow",
  "approx",
@@ -111,9 +111,9 @@ dependencies = [
 
 [[package]]
 name = "autd3-derive"
-version = "27.0.0-alpha.0"
+version = "27.0.0-alpha.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92d26040e765c51711ccf7b04fc19186f5b4f3af9b9383938632263a830bf122"
+checksum = "41486912b34fc4da112a96ca22d5f9a00729461bf2ab338db6b90201bcdd286e"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -123,9 +123,9 @@ dependencies = [
 
 [[package]]
 name = "autd3-driver"
-version = "27.0.0-alpha.0"
+version = "27.0.0-alpha.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0727a6c03b5e336a9ea73f514cdac323736ff73987a6758617eb9ca1843f2d23"
+checksum = "12a4fc3690327b0b4320e2b684f8e9b8e11b513695495bc9dda2458a0d23edc7"
 dependencies = [
  "async-trait",
  "autd3-derive",
@@ -147,9 +147,9 @@ dependencies = [
 
 [[package]]
 name = "autd3-firmware-emulator"
-version = "27.0.0-alpha.0"
+version = "27.0.0-alpha.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b3e36386ab99721ddd8af2a17400bfdd860d52d264b229391b903193d432f06f"
+checksum = "2ed38fd052a60e9b3279f297fe6fe76aa13c4b1129fa81387a7cb8af26351bd8"
 dependencies = [
  "autd3-driver",
  "num-integer",
@@ -159,9 +159,9 @@ dependencies = [
 
 [[package]]
 name = "autd3-gain-holo"
-version = "27.0.0-alpha.0"
+version = "27.0.0-alpha.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a57d213b9c0142d012ef286d1e2d215e14d224b9cf6520cb0c345b27751333d"
+checksum = "bd2ed0a8ba8b36ed8df4d2e66b5354cca910dd100b29c817c5099e9aad15af20"
 dependencies = [
  "assert_approx_eq",
  "autd3-driver",
