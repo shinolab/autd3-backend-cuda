@@ -13,7 +13,7 @@ async fn main() -> Result<()> {
 
     let backend = CUDABackend::new()?;
 
-    let center = autd.geometry.center() + Vector3::new(0., 0., 150.0 * mm);
+    let center = autd.geometry().center() + Vector3::new(0., 0., 150.0 * mm);
     let p = Vector3::new(30. * mm, 0., 0.);
     let g = GSPAT::new(backend, [(center + p, 5e3 * Pa), (center - p, 5e3 * Pa)]);
 
