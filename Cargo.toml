@@ -29,7 +29,7 @@ assert_approx_eq = "1.1.0"
 approx = "0.5.1"
 
 [build-dependencies]
-cc = "1.0.79"
+cc = "1.1.6"
 cuda-config = "0.1.0"
 
 [features]
