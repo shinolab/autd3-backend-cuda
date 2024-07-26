@@ -36,6 +36,7 @@ cuda-config = "0.1.0"
 default = []
 bench-utilities = ["autd3-gain-holo/bench-utilities"]
 async-trait = ["autd3-driver/async-trait", "autd3-gain-holo/async-trait"]
+use_meter = []
 
 [[bench]]
 name = "holo"
