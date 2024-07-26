@@ -55,3 +55,18 @@ jobs:
         if: ${{ needs.changed-files.outputs.src == 'true' }}
       - run: cargo clippy -- -D warnings
         if: ${{ needs.changed-files.outputs.src == 'true' }}
+
+  auto-merge:
+    needs:
+      - test
+      - lint
+    permissions:
+      pull-requests: write
+      contents: write
+    runs-on: ubuntu-latest
+    if: ${{ always() && !cancelled() && !failure() && github.actor == 'dependabot[bot]' }}
+    steps:
+      - run: gh pr merge --auto "$PR_URL"
+        env:
+          PR_URL: ${{github.event.pull_request.html_url}}
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
