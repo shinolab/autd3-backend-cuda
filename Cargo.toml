@@ -11,7 +11,7 @@ readme = "README.md"
 keywords = ["autd"]
 
 [dependencies]
-autd3-driver = { version = "27.0.0-alpha.2" }
+autd3-driver = { version = "27.0.0-alpha.3" }
 autd3-gain-holo = { version = "27.0.0-alpha.2" }
 bit-vec = "0.8.0"
 cuda-sys = "0.2.0"
