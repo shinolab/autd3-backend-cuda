@@ -1,75 +1,57 @@
 name: build
 
 on:
-  push:
-    branches:
-      - 'develop'
-  pull_request:
-    types: [opened, reopened, review_requested]
+  pull_request: {}
+  merge_group:
+    branches: [ "main" ]
 
 jobs:
-  check-src:
+
+  changed-files:
+    name: changed-files
     runs-on: ubuntu-latest
-    name: check if src files changed
     outputs:
-      status: ${{ steps.changed-files.outputs.modified_files }}
+      src: ${{ steps.changed-files-yaml.outputs.src_any_changed }}
     steps:
       - uses: actions/checkout@v4
-      - uses: tj-actions/changed-files@v42
-        id: changed-files
+      - id: changed-files-yaml
+        uses: tj-actions/changed-files@v44
         with:
-          files: |
-            .github/actions/setup-build/action.yml
-            .github/workflows/build.yml
-            ./**/*.rs
-            ./**/*.cu
-            ./*.toml
+          files_yaml: |
+            src:
+              - '**/*.rs'
+              - '**/Cargo.toml'
+              - '**/*.cu'
 
-  build-src:
-    needs: check-src
-    name: build-src-${{ matrix.os }}
+  test:
+    needs: changed-files
+    name: test-on-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-
     steps:
       - uses: actions/checkout@v4
-        
-      - name: Rust cache
-        if: needs.check-src.outputs.status
-        uses: swatinem/rust-cache@v2
-
-      - name: Setup
-        if: needs.check-src.outputs.status
-        uses: ./.github/actions/setup-build
+        if: ${{ needs.changed-files.outputs.src == 'true' }}
+      - uses: ./.github/actions/setup-build
         with:
           os: ${{ matrix.os }}
-
-      - name: Build src on ${{ matrix.os }}
-        if: needs.check-src.outputs.status
-        run: |
-          cargo build
+        if: ${{ needs.changed-files.outputs.src == 'true' }}
+      - run: cargo build
         shell: bash
+        if: ${{ needs.changed-files.outputs.src == 'true' }}
 
-  lint-src:
-    needs: check-src
-    name: lint-src
+  lint:
+    needs: changed-files
+    name: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Setup
-        if: needs.check-src.outputs.status
-        uses: ./.github/actions/setup-build
+        if: ${{ needs.changed-files.outputs.src == 'true' }}
+      - uses: ./.github/actions/setup-build
         with:
           os: ubuntu-latest
-
-      - name: Rust cache
-        if: needs.check-src.outputs.status
-        uses: swatinem/rust-cache@v2
-
-      - name: lint src
-        if: needs.check-src.outputs.status
-        run: |
-          cargo clippy -- -D warnings
+        if: ${{ needs.changed-files.outputs.src == 'true' }}
+      - run: cargo clippy -- -D warnings
+        if: ${{ needs.changed-files.outputs.src == 'true' }}
