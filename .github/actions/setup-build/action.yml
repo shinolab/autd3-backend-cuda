@@ -26,3 +26,6 @@ runs:
         sudo apt-get update
         sudo apt-get -y install cuda-nvcc-12-5 libcublas-dev-12-5 libcusolver-dev-12-5
         echo "/usr/local/cuda/bin" >> $GITHUB_PATH
+
+    - name: setup cache
+      uses: swatinem/rust-cache@v2
