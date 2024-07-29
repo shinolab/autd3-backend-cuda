@@ -22,7 +22,7 @@ thiserror = "1.0.63"
 [dev-dependencies]
 anyhow = "1.0.86"
 autd3 = "27.0.0-alpha.2"
-tokio = { version = "1.39.1", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.39.2", features = ["macros", "rt-multi-thread"] }
 criterion = { version = "0.5.1", features = ["html_reports"] }
 rstest = "0.21.0"
 assert_approx_eq = "1.1.0"
