@@ -1,12 +1,16 @@
 name: build
 
 on:
-  pull_request: {}
-  merge_group:
+  pull_request:
+    branches: [ "main" ]
+  push:
     branches: [ "main" ]
 
-jobs:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
+jobs:
   changed-files:
     name: changed-files
     runs-on: ubuntu-latest
@@ -66,7 +70,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ always() && !cancelled() && !failure() && github.actor == 'dependabot[bot]' }}
     steps:
-      - run: gh pr merge --auto "$PR_URL"
+      - run: gh pr merge --rebase --auto "$PR_URL"
         env:
           PR_URL: ${{github.event.pull_request.html_url}}
           GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
