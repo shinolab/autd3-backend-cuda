@@ -102,7 +102,7 @@ dependencies = [
  "criterion",
  "cuda-config",
  "cuda-sys",
- "nalgebra 0.33.0",
+ "nalgebra",
  "rand",
  "rstest",
  "thiserror",
@@ -134,7 +134,7 @@ dependencies = [
  "bitflags",
  "derive_more",
  "itertools 0.13.0",
- "nalgebra 0.33.0",
+ "nalgebra",
  "num-complex",
  "rayon",
  "thiserror",
@@ -159,15 +159,15 @@ dependencies = [
 
 [[package]]
 name = "autd3-gain-holo"
-version = "27.0.0-alpha.2"
+version = "27.0.0-alpha.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "89da4224d0007b89854944eaada585fa2ebeb74c064ab2faebd4b76a8c4ae13b"
+checksum = "d3bd040e87da91a5e4f773ba05088ad95a680962b5194f27783fc6646e6da7d8"
 dependencies = [
  "autd3-driver",
  "bit-vec",
  "criterion",
  "derive_more",
- "nalgebra 0.32.6",
+ "nalgebra",
  "rand",
  "rayon",
  "thiserror",
@@ -671,21 +671,6 @@ dependencies = [
 
 [[package]]
 name = "nalgebra"
-version = "0.32.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b5c17de023a86f59ed79891b2e5d5a94c705dbe904a5b5c9c952ea6221b03e4"
-dependencies = [
- "approx",
- "matrixmultiply",
- "num-complex",
- "num-rational",
- "num-traits",
- "simba 0.8.1",
- "typenum",
-]
-
-[[package]]
-name = "nalgebra"
 version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3c4b5f057b303842cf3262c27e465f4c303572e7f6b0648f60e16248ac3397f4"
@@ -695,7 +680,7 @@ dependencies = [
  "num-complex",
  "num-rational",
  "num-traits",
- "simba 0.9.0",
+ "simba",
  "typenum",
 ]
 
@@ -1089,19 +1074,6 @@ dependencies = [
  "itoa",
  "ryu",
  "serde",
-]
-
-[[package]]
-name = "simba"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "061507c94fc6ab4ba1c9a0305018408e312e17c041eb63bef8aa726fa33aceae"
-dependencies = [
- "approx",
- "num-complex",
- "num-traits",
- "paste",
- "wide",
 ]
 
 [[package]]
