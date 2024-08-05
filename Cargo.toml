@@ -24,7 +24,7 @@ anyhow = "1.0.86"
 tokio = { version = "1.39.2", features = ["macros", "rt-multi-thread"] }
 autd3 = "27.0.0-rc.0"
 criterion = { version = "0.5.1", features = ["html_reports"] }
-rstest = "0.21.0"
+rstest = "0.22.0"
 assert_approx_eq = "1.1.0"
 approx = "0.5.1"
 
