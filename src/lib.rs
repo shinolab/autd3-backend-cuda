@@ -3,7 +3,7 @@
 
 mod cusolver;
 
-use std::{collections::HashMap, ffi::CStr, fmt::Display, sync::Arc};
+use std::{collections::HashMap, ffi::CStr, fmt::Display};
 
 use autd3_driver::{acoustics::directivity::Sphere, geometry::Geometry};
 use autd3_gain_holo::{

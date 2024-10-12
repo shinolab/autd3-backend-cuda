@@ -11,7 +11,7 @@ async fn main() -> Result<()> {
         .open(Nop::builder())
         .await?;
 
-    let backend = CUDABackend::new()?;
+    let backend = std::sync::Arc::new(CUDABackend::new()?);
 
     let center = autd.geometry().center() + Vector3::new(0., 0., 150.0 * mm);
     let p = Vector3::new(30. * mm, 0., 0.);

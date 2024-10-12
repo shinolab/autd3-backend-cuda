@@ -23,7 +23,6 @@ thiserror = "1.0.63"
 anyhow = "1.0.86"
 tokio = { version = "1.39.2", features = ["macros", "rt-multi-thread"] }
 autd3 = "28.0.0"
-criterion = { version = "0.5.1", features = ["html_reports"] }
 rstest = "0.23.0"
 assert_approx_eq = "1.1.0"
 approx = "0.5.1"
@@ -36,8 +35,3 @@ cuda-config = "0.1.0"
 default = []
 async-trait = ["autd3-driver/async-trait", "autd3-gain-holo/async-trait"]
 use_meter = []
-
-[[bench]]
-name = "holo"
-path = "benches/holo.rs"
-harness = false
