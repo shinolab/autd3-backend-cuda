@@ -1,6 +1,6 @@
 [package]
 name = "autd3-backend-cuda"
-version = "27.0.0"
+version = "28.0.0"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2021"
 
@@ -11,8 +11,8 @@ readme = "README.md"
 keywords = ["autd"]
 
 [dependencies]
-autd3-driver = { version = "27.0.0" }
-autd3-gain-holo = { version = "27.0.0" }
+autd3-driver = { version = "28.0.0" }
+autd3-gain-holo = { version = "28.0.0" }
 bit-vec = "0.8.0"
 cuda-sys = "0.2.0"
 nalgebra = { version = "0.33.0", default-features = false, features = ["std"] }
@@ -22,7 +22,7 @@ thiserror = "1.0.63"
 [dev-dependencies]
 anyhow = "1.0.86"
 tokio = { version = "1.39.2", features = ["macros", "rt-multi-thread"] }
-autd3 = "27.0.0"
+autd3 = "28.0.0"
 criterion = { version = "0.5.1", features = ["html_reports"] }
 rstest = "0.23.0"
 assert_approx_eq = "1.1.0"
@@ -34,7 +34,6 @@ cuda-config = "0.1.0"
 
 [features]
 default = []
-bench-utilities = ["autd3-gain-holo/bench-utilities"]
 async-trait = ["autd3-driver/async-trait", "autd3-gain-holo/async-trait"]
 use_meter = []
 

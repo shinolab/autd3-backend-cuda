@@ -289,6 +289,20 @@ pub struct CUDABackend {
     handle_s: cusolver::cusolverDnHandle_t,
 }
 
+impl CUDABackend {
+    pub fn new() -> Result<Self, HoloError> {
+        let mut handle: cuda_sys::cublas::cublasHandle_t = std::ptr::null_mut();
+        unsafe {
+            cublas_call!(cuda_sys::cublas::cublasCreate_v2(&mut handle as _));
+        }
+
+        let mut handle_s: cusolver::cusolverDnHandle_t = std::ptr::null_mut();
+        unsafe { cusolver_call!(cusolver::cusolverDnCreate(&mut handle_s as _)) }
+
+        Ok(Self { handle, handle_s })
+    }
+}
+
 unsafe impl Send for CUDABackend {}
 unsafe impl Sync for CUDABackend {}
 
@@ -306,18 +320,6 @@ impl LinAlgBackend<Sphere> for CUDABackend {
     type MatrixX = CuMatrixX;
     type VectorXc = CuVectorXc;
     type VectorX = CuVectorX;
-
-    fn new() -> Result<Arc<Self>, HoloError> {
-        let mut handle: cuda_sys::cublas::cublasHandle_t = std::ptr::null_mut();
-        unsafe {
-            cublas_call!(cuda_sys::cublas::cublasCreate_v2(&mut handle as _));
-        }
-
-        let mut handle_s: cusolver::cusolverDnHandle_t = std::ptr::null_mut();
-        unsafe { cusolver_call!(cusolver::cusolverDnCreate(&mut handle_s as _)) }
-
-        Ok(Arc::new(Self { handle, handle_s }))
-    }
 
     fn generate_propagation_matrix(
         &self,
