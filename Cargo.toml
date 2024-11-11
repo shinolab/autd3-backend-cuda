@@ -17,7 +17,7 @@ bit-vec = "0.8.0"
 cuda-sys = "0.2.0"
 nalgebra = { version = "0.33.0", default-features = false, features = ["std"] }
 rand = "0.8.5"
-thiserror = "1.0.63"
+thiserror = "2.0.3"
 
 [dev-dependencies]
 anyhow = "1.0.86"
