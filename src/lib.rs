@@ -5,11 +5,14 @@ mod cusolver;
 
 use std::{collections::HashMap, ffi::CStr, fmt::Display};
 
-use autd3_driver::{acoustics::directivity::Sphere, geometry::Geometry};
+use autd3_core::{
+    acoustics::directivity::Sphere,
+    gain::BitVec,
+    geometry::{Geometry, Point3},
+};
 use autd3_gain_holo::{
     Complex, HoloError, LinAlgBackend, MatrixX, MatrixXc, Trans, VectorX, VectorXc,
 };
-use bit_vec::BitVec;
 use cuda_sys::cublas::{
     cublasOperation_t_CUBLAS_OP_C, cublasOperation_t_CUBLAS_OP_N, cublasOperation_t_CUBLAS_OP_T,
 };
@@ -324,8 +327,8 @@ impl LinAlgBackend<Sphere> for CUDABackend {
     fn generate_propagation_matrix(
         &self,
         geometry: &Geometry,
-        foci: &[autd3_driver::geometry::Vector3],
-        filter: &Option<HashMap<usize, BitVec<u32>>>,
+        foci: &[Point3],
+        filter: Option<&HashMap<usize, BitVec>>,
     ) -> Result<Self::MatrixXc, HoloError> {
         let cols = geometry
             .devices()
@@ -1177,11 +1180,11 @@ impl LinAlgBackend<Sphere> for CUDABackend {
 
 #[cfg(test)]
 mod tests {
-    use autd3_driver::{
+    use autd3::driver::autd3_device::AUTD3;
+    use autd3_core::{
         acoustics::{directivity::Sphere, propagate},
-        autd3_device::AUTD3,
         defined::PI,
-        geometry::{IntoDevice, Vector3},
+        geometry::{IntoDevice, UnitQuaternion},
     };
 
     use nalgebra::{ComplexField, Normed};
@@ -1200,22 +1203,25 @@ mod tests {
             (0..size)
                 .flat_map(|i| {
                     (0..size).map(move |j| {
-                        AUTD3::new(Vector3::new(
-                            i as f32 * AUTD3::DEVICE_WIDTH,
-                            j as f32 * AUTD3::DEVICE_HEIGHT,
-                            0.,
-                        ))
-                        .into_device(j + i * size)
+                        AUTD3 {
+                            pos: Point3::new(
+                                i as f32 * AUTD3::DEVICE_WIDTH,
+                                j as f32 * AUTD3::DEVICE_HEIGHT,
+                                0.,
+                            ),
+                            rot: UnitQuaternion::identity(),
+                        }
+                        .into_device((j + i * size) as _)
                     })
                 })
                 .collect(),
         )
     }
 
-    fn gen_foci(n: usize) -> impl Iterator<Item = (Vector3, Amplitude)> {
+    fn gen_foci(n: usize) -> impl Iterator<Item = (Point3, Amplitude)> {
         (0..n).map(move |i| {
             (
-                Vector3::new(
+                Point3::new(
                     90. + 10. * (2.0 * PI * i as f32 / n as f32).cos(),
                     70. + 10. * (2.0 * PI * i as f32 / n as f32).sin(),
                     150.,
@@ -1226,9 +1232,9 @@ mod tests {
     }
 
     fn make_random_v(backend: &CUDABackend, size: usize) -> Result<CuVectorX, HoloError> {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let v: Vec<f32> = (&mut rng)
-            .sample_iter(rand::distributions::Standard)
+            .sample_iter(rand::distr::StandardUniform)
             .take(size)
             .collect();
         backend.from_slice_v(&v)
@@ -1239,22 +1245,22 @@ mod tests {
         rows: usize,
         cols: usize,
     ) -> Result<CuMatrixX, HoloError> {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let v: Vec<f32> = (&mut rng)
-            .sample_iter(rand::distributions::Standard)
+            .sample_iter(rand::distr::StandardUniform)
             .take(rows * cols)
             .collect();
         backend.from_slice_m(rows, cols, &v)
     }
 
     fn make_random_cv(backend: &CUDABackend, size: usize) -> Result<CuVectorXc, HoloError> {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let real: Vec<f32> = (&mut rng)
-            .sample_iter(rand::distributions::Standard)
+            .sample_iter(rand::distr::StandardUniform)
             .take(size)
             .collect();
         let imag: Vec<f32> = (&mut rng)
-            .sample_iter(rand::distributions::Standard)
+            .sample_iter(rand::distr::StandardUniform)
             .take(size)
             .collect();
         backend.from_slice2_cv(&real, &imag)
@@ -1265,27 +1271,27 @@ mod tests {
         rows: usize,
         cols: usize,
     ) -> Result<CuMatrixXc, HoloError> {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let real: Vec<f32> = (&mut rng)
-            .sample_iter(rand::distributions::Standard)
+            .sample_iter(rand::distr::StandardUniform)
             .take(rows * cols)
             .collect();
         let imag: Vec<f32> = (&mut rng)
-            .sample_iter(rand::distributions::Standard)
+            .sample_iter(rand::distr::StandardUniform)
             .take(rows * cols)
             .collect();
         backend.from_slice2_cm(rows, cols, &real, &imag)
     }
 
     #[rstest::fixture]
-    fn backend() -> Arc<CUDABackend> {
+    fn backend() -> CUDABackend {
         CUDABackend::new().unwrap()
     }
 
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_alloc_v(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_alloc_v(backend: CUDABackend) -> Result<(), HoloError> {
         let v = backend.alloc_v(N)?;
         let v = backend.to_host_v(v)?;
 
@@ -1296,7 +1302,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_alloc_m(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_alloc_m(backend: CUDABackend) -> Result<(), HoloError> {
         let m = backend.alloc_m(N, 2 * N)?;
         let m = backend.to_host_m(m)?;
 
@@ -1308,7 +1314,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_alloc_cv(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_alloc_cv(backend: CUDABackend) -> Result<(), HoloError> {
         let v = backend.alloc_cv(N)?;
         let v = backend.to_host_cv(v)?;
 
@@ -1319,7 +1325,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_alloc_cm(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_alloc_cm(backend: CUDABackend) -> Result<(), HoloError> {
         let m = backend.alloc_cm(N, 2 * N)?;
         let m = backend.to_host_cm(m)?;
 
@@ -1331,7 +1337,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_alloc_zeros_v(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_alloc_zeros_v(backend: CUDABackend) -> Result<(), HoloError> {
         let v = backend.alloc_zeros_v(N)?;
         let v = backend.to_host_v(v)?;
 
@@ -1343,7 +1349,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_alloc_zeros_cv(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_alloc_zeros_cv(backend: CUDABackend) -> Result<(), HoloError> {
         let v = backend.alloc_zeros_cv(N)?;
         let v = backend.to_host_cv(v)?;
 
@@ -1355,7 +1361,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_alloc_zeros_cm(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_alloc_zeros_cm(backend: CUDABackend) -> Result<(), HoloError> {
         let m = backend.alloc_zeros_cm(N, 2 * N)?;
         let m = backend.to_host_cm(m)?;
 
@@ -1368,7 +1374,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_cols_c(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_cols_c(backend: CUDABackend) -> Result<(), HoloError> {
         let m = backend.alloc_cm(N, 2 * N)?;
 
         assert_eq!(2 * N, backend.cols_c(&m)?);
@@ -1379,11 +1385,11 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_from_slice_v(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
-        let rng = rand::thread_rng();
+    fn test_from_slice_v(backend: CUDABackend) -> Result<(), HoloError> {
+        let rng = rand::rng();
 
         let v: Vec<f32> = rng
-            .sample_iter(rand::distributions::Standard)
+            .sample_iter(rand::distr::StandardUniform)
             .take(N)
             .collect();
 
@@ -1400,11 +1406,11 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_from_slice_m(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
-        let rng = rand::thread_rng();
+    fn test_from_slice_m(backend: CUDABackend) -> Result<(), HoloError> {
+        let rng = rand::rng();
 
         let v: Vec<f32> = rng
-            .sample_iter(rand::distributions::Standard)
+            .sample_iter(rand::distr::StandardUniform)
             .take(N * 2 * N)
             .collect();
 
@@ -1424,11 +1430,11 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_from_slice_cv(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
-        let rng = rand::thread_rng();
+    fn test_from_slice_cv(backend: CUDABackend) -> Result<(), HoloError> {
+        let rng = rand::rng();
 
         let real: Vec<f32> = rng
-            .sample_iter(rand::distributions::Standard)
+            .sample_iter(rand::distr::StandardUniform)
             .take(N)
             .collect();
 
@@ -1446,15 +1452,15 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_from_slice2_cv(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
-        let mut rng = rand::thread_rng();
+    fn test_from_slice2_cv(backend: CUDABackend) -> Result<(), HoloError> {
+        let mut rng = rand::rng();
 
         let real: Vec<f32> = (&mut rng)
-            .sample_iter(rand::distributions::Standard)
+            .sample_iter(rand::distr::StandardUniform)
             .take(N)
             .collect();
         let imag: Vec<f32> = (&mut rng)
-            .sample_iter(rand::distributions::Standard)
+            .sample_iter(rand::distr::StandardUniform)
             .take(N)
             .collect();
 
@@ -1475,15 +1481,15 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_from_slice2_cm(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
-        let mut rng = rand::thread_rng();
+    fn test_from_slice2_cm(backend: CUDABackend) -> Result<(), HoloError> {
+        let mut rng = rand::rng();
 
         let real: Vec<f32> = (&mut rng)
-            .sample_iter(rand::distributions::Standard)
+            .sample_iter(rand::distr::StandardUniform)
             .take(N * 2 * N)
             .collect();
         let imag: Vec<f32> = (&mut rng)
-            .sample_iter(rand::distributions::Standard)
+            .sample_iter(rand::distr::StandardUniform)
             .take(N * 2 * N)
             .collect();
 
@@ -1504,12 +1510,12 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_copy_from_slice_v(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_copy_from_slice_v(backend: CUDABackend) -> Result<(), HoloError> {
         {
             let mut a = backend.alloc_zeros_v(N)?;
-            let mut rng = rand::thread_rng();
+            let mut rng = rand::rng();
             let v = (&mut rng)
-                .sample_iter(rand::distributions::Standard)
+                .sample_iter(rand::distr::StandardUniform)
                 .take(N / 2)
                 .collect::<Vec<f32>>();
 
@@ -1542,7 +1548,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_copy_to_v(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_copy_to_v(backend: CUDABackend) -> Result<(), HoloError> {
         let a = make_random_v(&backend, N)?;
         let mut b = backend.alloc_v(N)?;
 
@@ -1559,7 +1565,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_copy_to_m(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_copy_to_m(backend: CUDABackend) -> Result<(), HoloError> {
         let a = make_random_m(&backend, N, N)?;
         let mut b = backend.alloc_m(N, N)?;
 
@@ -1576,7 +1582,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_clone_v(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_clone_v(backend: CUDABackend) -> Result<(), HoloError> {
         let c = make_random_v(&backend, N)?;
         let c2 = backend.clone_v(&c)?;
 
@@ -1592,7 +1598,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_clone_m(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_clone_m(backend: CUDABackend) -> Result<(), HoloError> {
         let c = make_random_m(&backend, N, N)?;
         let c2 = backend.clone_m(&c)?;
 
@@ -1608,7 +1614,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_clone_cv(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_clone_cv(backend: CUDABackend) -> Result<(), HoloError> {
         let c = make_random_cv(&backend, N)?;
         let c2 = backend.clone_cv(&c)?;
 
@@ -1625,7 +1631,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_clone_cm(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_clone_cm(backend: CUDABackend) -> Result<(), HoloError> {
         let c = make_random_cm(&backend, N, N)?;
         let c2 = backend.clone_cm(&c)?;
 
@@ -1642,7 +1648,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_make_complex2_v(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_make_complex2_v(backend: CUDABackend) -> Result<(), HoloError> {
         let real = make_random_v(&backend, N)?;
         let imag = make_random_v(&backend, N)?;
 
@@ -1665,7 +1671,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_create_diagonal(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_create_diagonal(backend: CUDABackend) -> Result<(), HoloError> {
         let diagonal = make_random_v(&backend, N)?;
 
         let mut c = backend.alloc_m(N, N)?;
@@ -1689,7 +1695,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_create_diagonal_c(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_create_diagonal_c(backend: CUDABackend) -> Result<(), HoloError> {
         let diagonal = make_random_cv(&backend, N)?;
 
         let mut c = backend.alloc_cm(N, N)?;
@@ -1715,7 +1721,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_get_diagonal(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_get_diagonal(backend: CUDABackend) -> Result<(), HoloError> {
         let m = make_random_m(&backend, N, N)?;
         let mut diagonal = backend.alloc_v(N)?;
 
@@ -1732,7 +1738,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_norm_squared_cv(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_norm_squared_cv(backend: CUDABackend) -> Result<(), HoloError> {
         let v = make_random_cv(&backend, N)?;
 
         let mut abs = backend.alloc_v(N)?;
@@ -1749,7 +1755,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_real_cm(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_real_cm(backend: CUDABackend) -> Result<(), HoloError> {
         let v = make_random_cm(&backend, N, N)?;
         let mut r = backend.alloc_m(N, N)?;
 
@@ -1768,7 +1774,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_imag_cm(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_imag_cm(backend: CUDABackend) -> Result<(), HoloError> {
         let v = make_random_cm(&backend, N, N)?;
         let mut r = backend.alloc_m(N, N)?;
 
@@ -1787,11 +1793,11 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_scale_assign_cv(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_scale_assign_cv(backend: CUDABackend) -> Result<(), HoloError> {
         let mut v = make_random_cv(&backend, N)?;
         let vc = backend.clone_cv(&v)?;
-        let mut rng = rand::thread_rng();
-        let scale = Complex::new(rng.gen(), rng.gen());
+        let mut rng = rand::rng();
+        let scale = Complex::new(rng.random(), rng.random());
 
         backend.scale_assign_cv(scale, &mut v)?;
 
@@ -1806,7 +1812,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_conj_assign_v(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_conj_assign_v(backend: CUDABackend) -> Result<(), HoloError> {
         let mut v = make_random_cv(&backend, N)?;
         let vc = backend.clone_cv(&v)?;
 
@@ -1824,7 +1830,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_exp_assign_cv(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_exp_assign_cv(backend: CUDABackend) -> Result<(), HoloError> {
         let mut v = make_random_cv(&backend, N)?;
         let vc = backend.clone_cv(&v)?;
 
@@ -1841,7 +1847,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_concat_col_cm(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_concat_col_cm(backend: CUDABackend) -> Result<(), HoloError> {
         let a = make_random_cm(&backend, N, N)?;
         let b = make_random_cm(&backend, N, 2 * N)?;
         let mut c = backend.alloc_cm(N, N + 2 * N)?;
@@ -1860,7 +1866,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_max_v(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_max_v(backend: CUDABackend) -> Result<(), HoloError> {
         let v = make_random_v(&backend, N)?;
 
         let max = backend.max_v(&v)?;
@@ -1876,7 +1882,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_hadamard_product_cm(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_hadamard_product_cm(backend: CUDABackend) -> Result<(), HoloError> {
         let a = make_random_cm(&backend, N, N)?;
         let b = make_random_cm(&backend, N, N)?;
         let mut c = backend.alloc_cm(N, N)?;
@@ -1899,7 +1905,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_dot(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_dot(backend: CUDABackend) -> Result<(), HoloError> {
         let a = make_random_v(&backend, N)?;
         let b = make_random_v(&backend, N)?;
 
@@ -1915,7 +1921,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_dot_c(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_dot_c(backend: CUDABackend) -> Result<(), HoloError> {
         let a = make_random_cv(&backend, N)?;
         let b = make_random_cv(&backend, N)?;
 
@@ -1936,13 +1942,13 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_add_v(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_add_v(backend: CUDABackend) -> Result<(), HoloError> {
         let a = make_random_v(&backend, N)?;
         let mut b = make_random_v(&backend, N)?;
         let bc = backend.clone_v(&b)?;
 
-        let mut rng = rand::thread_rng();
-        let alpha = rng.gen();
+        let mut rng = rand::rng();
+        let alpha = rng.random();
 
         backend.add_v(alpha, &a, &mut b)?;
 
@@ -1961,13 +1967,13 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_add_m(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_add_m(backend: CUDABackend) -> Result<(), HoloError> {
         let a = make_random_m(&backend, N, N)?;
         let mut b = make_random_m(&backend, N, N)?;
         let bc = backend.clone_m(&b)?;
 
-        let mut rng = rand::thread_rng();
-        let alpha = rng.gen();
+        let mut rng = rand::rng();
+        let alpha = rng.random();
 
         backend.add_m(alpha, &a, &mut b)?;
 
@@ -1986,16 +1992,16 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_gevv_c(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
-        let mut rng = rand::thread_rng();
+    fn test_gevv_c(backend: CUDABackend) -> Result<(), HoloError> {
+        let mut rng = rand::rng();
 
         {
             let a = make_random_cv(&backend, N)?;
             let b = make_random_cv(&backend, N)?;
             let mut c = make_random_cm(&backend, N, N)?;
 
-            let alpha = Complex::new(rng.gen(), rng.gen());
-            let beta = Complex::new(rng.gen(), rng.gen());
+            let alpha = Complex::new(rng.random(), rng.random());
+            let beta = Complex::new(rng.random(), rng.random());
             assert!(backend
                 .gevv_c(Trans::NoTrans, Trans::NoTrans, alpha, &a, &b, beta, &mut c)
                 .is_err());
@@ -2007,8 +2013,8 @@ mod tests {
             let mut c = make_random_cm(&backend, N, N)?;
             let cc = backend.clone_cm(&c)?;
 
-            let alpha = Complex::new(rng.gen(), rng.gen());
-            let beta = Complex::new(rng.gen(), rng.gen());
+            let alpha = Complex::new(rng.random(), rng.random());
+            let beta = Complex::new(rng.random(), rng.random());
             backend.gevv_c(Trans::NoTrans, Trans::Trans, alpha, &a, &b, beta, &mut c)?;
 
             let a = backend.to_host_cv(a)?;
@@ -2028,8 +2034,8 @@ mod tests {
             let mut c = make_random_cm(&backend, N, N)?;
             let cc = backend.clone_cm(&c)?;
 
-            let alpha = Complex::new(rng.gen(), rng.gen());
-            let beta = Complex::new(rng.gen(), rng.gen());
+            let alpha = Complex::new(rng.random(), rng.random());
+            let beta = Complex::new(rng.random(), rng.random());
             backend.gevv_c(
                 Trans::NoTrans,
                 Trans::ConjTrans,
@@ -2057,8 +2063,8 @@ mod tests {
             let mut c = make_random_cm(&backend, 1, 1)?;
             let cc = backend.clone_cm(&c)?;
 
-            let alpha = Complex::new(rng.gen(), rng.gen());
-            let beta = Complex::new(rng.gen(), rng.gen());
+            let alpha = Complex::new(rng.random(), rng.random());
+            let beta = Complex::new(rng.random(), rng.random());
             backend.gevv_c(Trans::Trans, Trans::NoTrans, alpha, &a, &b, beta, &mut c)?;
 
             let a = backend.to_host_cv(a)?;
@@ -2077,8 +2083,8 @@ mod tests {
             let b = make_random_cv(&backend, N)?;
             let mut c = make_random_cm(&backend, N, N)?;
 
-            let alpha = Complex::new(rng.gen(), rng.gen());
-            let beta = Complex::new(rng.gen(), rng.gen());
+            let alpha = Complex::new(rng.random(), rng.random());
+            let beta = Complex::new(rng.random(), rng.random());
             assert!(backend
                 .gevv_c(Trans::Trans, Trans::Trans, alpha, &a, &b, beta, &mut c)
                 .is_err());
@@ -2089,8 +2095,8 @@ mod tests {
             let b = make_random_cv(&backend, N)?;
             let mut c = make_random_cm(&backend, N, N)?;
 
-            let alpha = Complex::new(rng.gen(), rng.gen());
-            let beta = Complex::new(rng.gen(), rng.gen());
+            let alpha = Complex::new(rng.random(), rng.random());
+            let beta = Complex::new(rng.random(), rng.random());
             assert!(backend
                 .gevv_c(Trans::Trans, Trans::ConjTrans, alpha, &a, &b, beta, &mut c)
                 .is_err());
@@ -2102,8 +2108,8 @@ mod tests {
             let mut c = make_random_cm(&backend, 1, 1)?;
             let cc = backend.clone_cm(&c)?;
 
-            let alpha = Complex::new(rng.gen(), rng.gen());
-            let beta = Complex::new(rng.gen(), rng.gen());
+            let alpha = Complex::new(rng.random(), rng.random());
+            let beta = Complex::new(rng.random(), rng.random());
             backend.gevv_c(
                 Trans::ConjTrans,
                 Trans::NoTrans,
@@ -2130,8 +2136,8 @@ mod tests {
             let b = make_random_cv(&backend, N)?;
             let mut c = make_random_cm(&backend, N, N)?;
 
-            let alpha = Complex::new(rng.gen(), rng.gen());
-            let beta = Complex::new(rng.gen(), rng.gen());
+            let alpha = Complex::new(rng.random(), rng.random());
+            let beta = Complex::new(rng.random(), rng.random());
             assert!(backend
                 .gevv_c(Trans::ConjTrans, Trans::Trans, alpha, &a, &b, beta, &mut c)
                 .is_err());
@@ -2142,8 +2148,8 @@ mod tests {
             let b = make_random_cv(&backend, N)?;
             let mut c = make_random_cm(&backend, N, N)?;
 
-            let alpha = Complex::new(rng.gen(), rng.gen());
-            let beta = Complex::new(rng.gen(), rng.gen());
+            let alpha = Complex::new(rng.random(), rng.random());
+            let beta = Complex::new(rng.random(), rng.random());
             assert!(backend
                 .gevv_c(
                     Trans::ConjTrans,
@@ -2163,11 +2169,11 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_gemv_c(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_gemv_c(backend: CUDABackend) -> Result<(), HoloError> {
         let m = N;
         let n = 2 * N;
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         {
             let a = make_random_cm(&backend, m, n)?;
@@ -2175,8 +2181,8 @@ mod tests {
             let mut c = make_random_cv(&backend, m)?;
             let cc = backend.clone_cv(&c)?;
 
-            let alpha = Complex::new(rng.gen(), rng.gen());
-            let beta = Complex::new(rng.gen(), rng.gen());
+            let alpha = Complex::new(rng.random(), rng.random());
+            let beta = Complex::new(rng.random(), rng.random());
             backend.gemv_c(Trans::NoTrans, alpha, &a, &b, beta, &mut c)?;
 
             let a = backend.to_host_cm(a)?;
@@ -2196,8 +2202,8 @@ mod tests {
             let mut c = make_random_cv(&backend, m)?;
             let cc = backend.clone_cv(&c)?;
 
-            let alpha = Complex::new(rng.gen(), rng.gen());
-            let beta = Complex::new(rng.gen(), rng.gen());
+            let alpha = Complex::new(rng.random(), rng.random());
+            let beta = Complex::new(rng.random(), rng.random());
             backend.gemv_c(Trans::Trans, alpha, &a, &b, beta, &mut c)?;
 
             let a = backend.to_host_cm(a)?;
@@ -2217,8 +2223,8 @@ mod tests {
             let mut c = make_random_cv(&backend, m)?;
             let cc = backend.clone_cv(&c)?;
 
-            let alpha = Complex::new(rng.gen(), rng.gen());
-            let beta = Complex::new(rng.gen(), rng.gen());
+            let alpha = Complex::new(rng.random(), rng.random());
+            let beta = Complex::new(rng.random(), rng.random());
             backend.gemv_c(Trans::ConjTrans, alpha, &a, &b, beta, &mut c)?;
 
             let a = backend.to_host_cm(a)?;
@@ -2237,12 +2243,12 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_gemm_c(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_gemm_c(backend: CUDABackend) -> Result<(), HoloError> {
         let m = N;
         let n = 2 * N;
         let k = 3 * N;
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
 
         {
             let a = make_random_cm(&backend, m, k)?;
@@ -2250,8 +2256,8 @@ mod tests {
             let mut c = make_random_cm(&backend, m, n)?;
             let cc = backend.clone_cm(&c)?;
 
-            let alpha = Complex::new(rng.gen(), rng.gen());
-            let beta = Complex::new(rng.gen(), rng.gen());
+            let alpha = Complex::new(rng.random(), rng.random());
+            let beta = Complex::new(rng.random(), rng.random());
             backend.gemm_c(Trans::NoTrans, Trans::NoTrans, alpha, &a, &b, beta, &mut c)?;
 
             let a = backend.to_host_cm(a)?;
@@ -2271,8 +2277,8 @@ mod tests {
             let mut c = make_random_cm(&backend, m, n)?;
             let cc = backend.clone_cm(&c)?;
 
-            let alpha = Complex::new(rng.gen(), rng.gen());
-            let beta = Complex::new(rng.gen(), rng.gen());
+            let alpha = Complex::new(rng.random(), rng.random());
+            let beta = Complex::new(rng.random(), rng.random());
             backend.gemm_c(Trans::NoTrans, Trans::Trans, alpha, &a, &b, beta, &mut c)?;
 
             let a = backend.to_host_cm(a)?;
@@ -2292,8 +2298,8 @@ mod tests {
             let mut c = make_random_cm(&backend, m, n)?;
             let cc = backend.clone_cm(&c)?;
 
-            let alpha = Complex::new(rng.gen(), rng.gen());
-            let beta = Complex::new(rng.gen(), rng.gen());
+            let alpha = Complex::new(rng.random(), rng.random());
+            let beta = Complex::new(rng.random(), rng.random());
             backend.gemm_c(
                 Trans::NoTrans,
                 Trans::ConjTrans,
@@ -2321,8 +2327,8 @@ mod tests {
             let mut c = make_random_cm(&backend, m, n)?;
             let cc = backend.clone_cm(&c)?;
 
-            let alpha = Complex::new(rng.gen(), rng.gen());
-            let beta = Complex::new(rng.gen(), rng.gen());
+            let alpha = Complex::new(rng.random(), rng.random());
+            let beta = Complex::new(rng.random(), rng.random());
             backend.gemm_c(Trans::Trans, Trans::NoTrans, alpha, &a, &b, beta, &mut c)?;
 
             let a = backend.to_host_cm(a)?;
@@ -2342,8 +2348,8 @@ mod tests {
             let mut c = make_random_cm(&backend, m, n)?;
             let cc = backend.clone_cm(&c)?;
 
-            let alpha = Complex::new(rng.gen(), rng.gen());
-            let beta = Complex::new(rng.gen(), rng.gen());
+            let alpha = Complex::new(rng.random(), rng.random());
+            let beta = Complex::new(rng.random(), rng.random());
             backend.gemm_c(Trans::Trans, Trans::Trans, alpha, &a, &b, beta, &mut c)?;
 
             let a = backend.to_host_cm(a)?;
@@ -2363,8 +2369,8 @@ mod tests {
             let mut c = make_random_cm(&backend, m, n)?;
             let cc = backend.clone_cm(&c)?;
 
-            let alpha = Complex::new(rng.gen(), rng.gen());
-            let beta = Complex::new(rng.gen(), rng.gen());
+            let alpha = Complex::new(rng.random(), rng.random());
+            let beta = Complex::new(rng.random(), rng.random());
             backend.gemm_c(Trans::Trans, Trans::ConjTrans, alpha, &a, &b, beta, &mut c)?;
 
             let a = backend.to_host_cm(a)?;
@@ -2384,8 +2390,8 @@ mod tests {
             let mut c = make_random_cm(&backend, m, n)?;
             let cc = backend.clone_cm(&c)?;
 
-            let alpha = Complex::new(rng.gen(), rng.gen());
-            let beta = Complex::new(rng.gen(), rng.gen());
+            let alpha = Complex::new(rng.random(), rng.random());
+            let beta = Complex::new(rng.random(), rng.random());
             backend.gemm_c(
                 Trans::ConjTrans,
                 Trans::NoTrans,
@@ -2413,8 +2419,8 @@ mod tests {
             let mut c = make_random_cm(&backend, m, n)?;
             let cc = backend.clone_cm(&c)?;
 
-            let alpha = Complex::new(rng.gen(), rng.gen());
-            let beta = Complex::new(rng.gen(), rng.gen());
+            let alpha = Complex::new(rng.random(), rng.random());
+            let beta = Complex::new(rng.random(), rng.random());
             backend.gemm_c(Trans::ConjTrans, Trans::Trans, alpha, &a, &b, beta, &mut c)?;
 
             let a = backend.to_host_cm(a)?;
@@ -2434,8 +2440,8 @@ mod tests {
             let mut c = make_random_cm(&backend, m, n)?;
             let cc = backend.clone_cm(&c)?;
 
-            let alpha = Complex::new(rng.gen(), rng.gen());
-            let beta = Complex::new(rng.gen(), rng.gen());
+            let alpha = Complex::new(rng.random(), rng.random());
+            let beta = Complex::new(rng.random(), rng.random());
             backend.gemm_c(
                 Trans::ConjTrans,
                 Trans::ConjTrans,
@@ -2462,15 +2468,15 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_solve_inplace(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_solve_inplace(backend: CUDABackend) -> Result<(), HoloError> {
         {
             let tmp = make_random_m(&backend, N, N)?;
             let tmp = backend.to_host_m(tmp)?;
 
             let a = &tmp * tmp.adjoint();
 
-            let mut rng = rand::thread_rng();
-            let x = VectorX::from_iterator(N, (0..N).map(|_| rng.gen()));
+            let mut rng = rand::rng();
+            let x = VectorX::from_iterator(N, (0..N).map(|_| rng.random()));
 
             let b = &a * &x;
 
@@ -2489,7 +2495,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_reduce_col(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_reduce_col(backend: CUDABackend) -> Result<(), HoloError> {
         let a = make_random_m(&backend, N, N)?;
 
         let mut b = backend.alloc_v(N)?;
@@ -2509,7 +2515,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_scaled_to_cv(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_scaled_to_cv(backend: CUDABackend) -> Result<(), HoloError> {
         let a = make_random_cv(&backend, N)?;
         let b = make_random_cv(&backend, N)?;
         let mut c = backend.alloc_cv(N)?;
@@ -2532,7 +2538,7 @@ mod tests {
     #[rstest::rstest]
     #[test]
     #[cfg_attr(miri, ignore)]
-    fn test_scaled_to_assign_cv(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_scaled_to_assign_cv(backend: CUDABackend) -> Result<(), HoloError> {
         let a = make_random_cv(&backend, N)?;
         let mut b = make_random_cv(&backend, N)?;
         let bc = backend.clone_cv(&b)?;
@@ -2559,9 +2565,9 @@ mod tests {
     fn test_generate_propagation_matrix(
         #[case] dev_num: usize,
         #[case] foci_num: usize,
-        backend: Arc<CUDABackend>,
+        backend: CUDABackend,
     ) -> Result<(), HoloError> {
-        let reference = |geometry: Geometry, foci: Vec<Vector3>| {
+        let reference = |geometry: Geometry, foci: Vec<Point3>| {
             let mut g = MatrixXc::zeros(
                 foci.len(),
                 geometry
@@ -2589,7 +2595,7 @@ mod tests {
         let geometry = generate_geometry(dev_num);
         let foci = gen_foci(foci_num).map(|(p, _)| p).collect::<Vec<_>>();
 
-        let g = backend.generate_propagation_matrix(&geometry, &foci, &None)?;
+        let g = backend.generate_propagation_matrix(&geometry, &foci, None)?;
         let g = backend.to_host_cm(g)?;
         reference(geometry, foci)
             .iter()
@@ -2609,7 +2615,7 @@ mod tests {
     fn test_generate_propagation_matrix_with_filter(
         #[case] dev_num: usize,
         #[case] foci_num: usize,
-        backend: Arc<CUDABackend>,
+        backend: CUDABackend,
     ) -> Result<(), HoloError> {
         use std::collections::HashMap;
 
@@ -2617,7 +2623,7 @@ mod tests {
             geometry
                 .iter()
                 .map(|dev| {
-                    let mut filter = bit_vec::BitVec::new();
+                    let mut filter = BitVec::new();
                     dev.iter().for_each(|tr| {
                         filter.push(tr.idx() > dev.num_transducers() / 2);
                     });
@@ -2626,7 +2632,7 @@ mod tests {
                 .collect::<HashMap<_, _>>()
         };
 
-        let reference = |geometry, foci: Vec<Vector3>| {
+        let reference = |geometry, foci: Vec<Point3>| {
             let filter = filter(&geometry);
             let transducers = geometry
                 .iter()
@@ -2659,7 +2665,7 @@ mod tests {
         let foci = gen_foci(foci_num).map(|(p, _)| p).collect::<Vec<_>>();
         let filter = filter(&geometry);
 
-        let g = backend.generate_propagation_matrix(&geometry, &foci, &Some(filter))?;
+        let g = backend.generate_propagation_matrix(&geometry, &foci, Some(&filter))?;
         let g = backend.to_host_cm(g)?;
         assert_eq!(g.nrows(), foci.len());
         assert_eq!(
@@ -2682,7 +2688,7 @@ mod tests {
 
     #[rstest::rstest]
     #[test]
-    fn test_gen_back_prop(backend: Arc<CUDABackend>) -> Result<(), HoloError> {
+    fn test_gen_back_prop(backend: CUDABackend) -> Result<(), HoloError> {
         let geometry = generate_geometry(1);
         let foci = gen_foci(1).map(|(p, _)| p).collect::<Vec<_>>();
 
@@ -2692,7 +2698,7 @@ mod tests {
             .sum::<usize>();
         let n = foci.len();
 
-        let g = backend.generate_propagation_matrix(&geometry, &foci, &None)?;
+        let g = backend.generate_propagation_matrix(&geometry, &foci, None)?;
 
         let b = backend.gen_back_prop(m, n, &g)?;
         let g = backend.to_host_cm(g)?;
