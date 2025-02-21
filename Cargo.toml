@@ -1,6 +1,6 @@
 [package]
 name = "autd3-backend-cuda"
-version = "29.0.0"
+version = "30.0.0"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
 edition = "2021"
 
@@ -11,8 +11,8 @@ readme = "README.md"
 keywords = ["autd"]
 
 [dependencies]
-autd3-core = { version = "29.0.0", features = ["acoustics", "derive", "gain"] }
-autd3-gain-holo = { version = "29.0.0", default-features = false }
+autd3-core = { version = "30.0.0", features = ["acoustics", "derive", "gain"] }
+autd3-gain-holo = { version = "30.0.0", default-features = false }
 cuda-sys = { version = "0.2.0", default-features = false }
 nalgebra = { version = "0.33.2", default-features = false, features = ["std"] }
 rand = { version = "0.9.0", default-features = false }
@@ -20,8 +20,8 @@ thiserror = { version = "2.0.11", default-features = false }
 
 
 [dev-dependencies]
-anyhow = { version = "1.0.95", default-features = false }
-autd3 = { version = "29.0.0", default-features = false }
+anyhow = { version = "1.0.96", default-features = false }
+autd3 = { version = "30.0.0", default-features = false }
 rstest = { version = "0.24.0", default-features = false }
 assert_approx_eq = { version = "1.1.0", default-features = false }
 approx = { version = "0.5.1", default-features = false }
