@@ -2,7 +2,7 @@
 name = "autd3-backend-cuda"
 version = "30.0.0"
 authors = ["shun suzuki <suzuki@hapis.k.u-tokyo.ac.jp>"]
-edition = "2021"
+edition = "2024"
 
 license = "MIT"
 description = "CUDA Backend for AUTD3"
