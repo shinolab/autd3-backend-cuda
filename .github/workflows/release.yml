@@ -15,4 +15,4 @@ jobs:
       - name: publish to carate.io
         run: |
           cargo publish --no-verify --dry-run
-          cargo publish --no-verify --token ${{ secrets.CRATEIO_TOKEN }} || true
+          cargo publish --no-verify --token ${{ secrets.CRATEIO_TOKEN }}

@@ -1,0 +1,91 @@
+[config]
+default_to_workspace = false
+skip_core_tasks = true
+
+[tasks.format]
+ignore_errors = true
+command = "cargo"
+args = ["fmt"]
+
+[tasks.clean]
+command = "cargo"
+args = ["clean"]
+
+[tasks.check]
+dependencies = ["format", "lint", "build", "test"]
+
+[tasks.build]
+command = "cargo"
+args = ["build", "${@}"]
+
+[tasks.lint]
+command = "cargo"
+args = ["clippy", "--tests", "${@}", "--", "-D", "warnings"]
+
+[tasks.test]
+command = "cargo"
+args = ["nextest", "run", "${@}"]
+
+[tasks.bindgen]
+windows_alias = "bindgen-windows"
+linux_alias = "bindgen-linux"
+
+[tasks.bindgen-linux]
+env = { CUDA_VERSION = { value = "12.8", condition = { env_not_set = ["CUDA_VERSION"] } } }
+command = "bindgen"
+args = [
+    "--rust-target",
+    "1.85.0",
+    "--rust-edition",
+    "2024",
+    "/usr/local/cuda-${CUDA_VERSION}/include/cusolverDn.h",
+    "-o",
+    "src/cusolver/linux.rs",
+    "--allowlist-type",
+    "cusolverStatus_t",
+    "--allowlist-var",
+    "CUBLAS_FILL_MODE_UPPER",
+    "--allowlist-function",
+    "cusolverDnXpotrs",
+    "--allowlist-function",
+    "cusolverDnXpotrf",
+    "--allowlist-function",
+    "cusolverDnXpotrf_bufferSize",
+    "--allowlist-function",
+    "cusolverDnCreate",
+    "--allowlist-function",
+    "cusolverDnDestroy",
+    "--",
+    "-I",
+    "/usr/local/cuda-${CUDA_VERSION}/include/",
+]
+
+[tasks.bindgen-windows]
+env = { CUDA_VERSION = { value = "12.8", condition = { env_not_set = ["CUDA_VERSION"] } } }
+command = "bindgen"
+args = [
+    "--rust-target",
+    "1.85.0",
+    "--rust-edition",
+    "2024",
+    "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v${CUDA_VERSION}/include/cusolverDn.h",
+    "-o",
+    "src/cusolver/win32.rs",
+    "--allowlist-type",
+    "cusolverStatus_t",
+    "--allowlist-var",
+    "CUBLAS_FILL_MODE_UPPER",
+    "--allowlist-function",
+    "cusolverDnXpotrs",
+    "--allowlist-function",
+    "cusolverDnXpotrf",
+    "--allowlist-function",
+    "cusolverDnXpotrf_bufferSize",
+    "--allowlist-function",
+    "cusolverDnCreate",
+    "--allowlist-function",
+    "cusolverDnDestroy",
+    "--",
+    "-I",
+    "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v${CUDA_VERSION}/include",
+]

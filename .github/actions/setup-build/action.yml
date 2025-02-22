@@ -12,6 +12,10 @@ runs:
       with:
         toolchain: 'stable'
 
+    - uses: taiki-e/install-action@v2
+      with:
+        tool: cargo-make
+
     - uses: Jimver/cuda-toolkit@v0.2.16
       if: inputs.os == 'windows-latest'
       with:
@@ -21,11 +25,8 @@ runs:
       shell: bash
       if: inputs.os == 'ubuntu-latest'
       run: |
-        wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
+        wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb
         sudo dpkg -i cuda-keyring_1.1-1_all.deb
         sudo apt-get update
-        sudo apt-get -y install cuda-nvcc-12-5 libcublas-dev-12-5 libcusolver-dev-12-5
+        sudo apt-get -y install cuda-nvcc-12-8 libcublas-dev-12-8 libcusolver-dev-12-8
         echo "/usr/local/cuda/bin" >> $GITHUB_PATH
-
-    - name: setup cache
-      uses: swatinem/rust-cache@v2
