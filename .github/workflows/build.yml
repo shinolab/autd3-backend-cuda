@@ -41,6 +41,9 @@ jobs:
       - uses: ./.github/actions/setup-build
         with:
           os: ${{ matrix.os }}
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
       - run: cargo make check
         shell: bash
 
