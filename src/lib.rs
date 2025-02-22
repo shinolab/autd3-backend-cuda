@@ -16,7 +16,7 @@ use autd3_gain_holo::{
 use cuda_sys::cublas::{
     cublasOperation_t_CUBLAS_OP_C, cublasOperation_t_CUBLAS_OP_N, cublasOperation_t_CUBLAS_OP_T,
 };
-use cusolver::cudaDataType_t::CUDA_R_32F;
+use cusolver::cudaDataType_t_CUDA_R_32F as CUDA_R_32F;
 use thiserror::Error;
 
 #[repr(C)]
@@ -32,7 +32,7 @@ fn make_complex(x: f32, y: f32) -> CuComplex {
 }
 
 #[link(name = "autd3_cuda_kernel", kind = "static")]
-extern "C" {
+unsafe extern "C" {
     fn cu_generate_propagation_matrix(
         positions: *const f32,
         foci: *const f32,
@@ -147,7 +147,7 @@ macro_rules! cublas_call {
 macro_rules! cusolver_call {
     ($f:expr) => {{
         let err = $f;
-        if err != cusolver::cusolverStatus_t::CUSOLVER_STATUS_SUCCESS {
+        if err != cusolver::cusolverStatus_t_CUSOLVER_STATUS_SUCCESS {
             return Err(CUDABackendError::CuSOLVERError(err).into());
         }
     }};
@@ -194,9 +194,7 @@ macro_rules! alloc_zeroed {
 }
 
 macro_rules! free {
-    ($p:expr) => {{
-        cuda_call!(cuda_sys::cudart::cudaFree($p as _))
-    }};
+    ($p:expr) => {{ cuda_call!(cuda_sys::cudart::cudaFree($p as _)) }};
 }
 
 macro_rules! cpy_host_to_device {
@@ -1021,12 +1019,12 @@ impl LinAlgBackend<Sphere> for CUDABackend {
             let ap = a.ptr;
             let bp = x.ptr;
 
-            let mut workspace_in_bytes_on_device: u64 = 0;
-            let mut workspace_in_bytes_on_host: u64 = 0;
+            let mut workspace_in_bytes_on_device: usize = 0;
+            let mut workspace_in_bytes_on_host: usize = 0;
             cusolver_call!(cusolver::cusolverDnXpotrf_bufferSize(
                 self.handle_s,
                 std::ptr::null_mut(),
-                cusolver::cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
+                cusolver::cublasFillMode_t_CUBLAS_FILL_MODE_UPPER,
                 n as _,
                 CUDA_R_32F,
                 ap as _,
@@ -1036,9 +1034,8 @@ impl LinAlgBackend<Sphere> for CUDABackend {
                 &mut workspace_in_bytes_on_host as _,
             ));
 
-            let workspace_buffer_on_device =
-                alloc_uninitialized!(u8, workspace_in_bytes_on_device as usize);
-            let mut workspace_buffer_on_host_v = vec![0u8; workspace_in_bytes_on_host as usize];
+            let workspace_buffer_on_device = alloc_uninitialized!(u8, workspace_in_bytes_on_device);
+            let mut workspace_buffer_on_host_v = vec![0u8; workspace_in_bytes_on_host];
             let workspace_buffer_on_host = if workspace_in_bytes_on_host > 0 {
                 workspace_buffer_on_host_v.as_mut_ptr()
             } else {
@@ -1050,7 +1047,7 @@ impl LinAlgBackend<Sphere> for CUDABackend {
             cusolver_call!(cusolver::cusolverDnXpotrf(
                 self.handle_s,
                 std::ptr::null_mut(),
-                cusolver::cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
+                cusolver::cublasFillMode_t_CUBLAS_FILL_MODE_UPPER,
                 n as _,
                 CUDA_R_32F,
                 ap as _,
@@ -1065,7 +1062,7 @@ impl LinAlgBackend<Sphere> for CUDABackend {
             cusolver_call!(cusolver::cusolverDnXpotrs(
                 self.handle_s,
                 std::ptr::null_mut(),
-                cusolver::cublasFillMode_t::CUBLAS_FILL_MODE_UPPER,
+                cusolver::cublasFillMode_t_CUBLAS_FILL_MODE_UPPER,
                 n as _,
                 1,
                 CUDA_R_32F,
@@ -2002,9 +1999,11 @@ mod tests {
 
             let alpha = Complex::new(rng.random(), rng.random());
             let beta = Complex::new(rng.random(), rng.random());
-            assert!(backend
-                .gevv_c(Trans::NoTrans, Trans::NoTrans, alpha, &a, &b, beta, &mut c)
-                .is_err());
+            assert!(
+                backend
+                    .gevv_c(Trans::NoTrans, Trans::NoTrans, alpha, &a, &b, beta, &mut c)
+                    .is_err()
+            );
         }
 
         {
@@ -2085,9 +2084,11 @@ mod tests {
 
             let alpha = Complex::new(rng.random(), rng.random());
             let beta = Complex::new(rng.random(), rng.random());
-            assert!(backend
-                .gevv_c(Trans::Trans, Trans::Trans, alpha, &a, &b, beta, &mut c)
-                .is_err());
+            assert!(
+                backend
+                    .gevv_c(Trans::Trans, Trans::Trans, alpha, &a, &b, beta, &mut c)
+                    .is_err()
+            );
         }
 
         {
@@ -2097,9 +2098,11 @@ mod tests {
 
             let alpha = Complex::new(rng.random(), rng.random());
             let beta = Complex::new(rng.random(), rng.random());
-            assert!(backend
-                .gevv_c(Trans::Trans, Trans::ConjTrans, alpha, &a, &b, beta, &mut c)
-                .is_err());
+            assert!(
+                backend
+                    .gevv_c(Trans::Trans, Trans::ConjTrans, alpha, &a, &b, beta, &mut c)
+                    .is_err()
+            );
         }
 
         {
@@ -2138,9 +2141,11 @@ mod tests {
 
             let alpha = Complex::new(rng.random(), rng.random());
             let beta = Complex::new(rng.random(), rng.random());
-            assert!(backend
-                .gevv_c(Trans::ConjTrans, Trans::Trans, alpha, &a, &b, beta, &mut c)
-                .is_err());
+            assert!(
+                backend
+                    .gevv_c(Trans::ConjTrans, Trans::Trans, alpha, &a, &b, beta, &mut c)
+                    .is_err()
+            );
         }
 
         {
@@ -2150,17 +2155,19 @@ mod tests {
 
             let alpha = Complex::new(rng.random(), rng.random());
             let beta = Complex::new(rng.random(), rng.random());
-            assert!(backend
-                .gevv_c(
-                    Trans::ConjTrans,
-                    Trans::ConjTrans,
-                    alpha,
-                    &a,
-                    &b,
-                    beta,
-                    &mut c,
-                )
-                .is_err());
+            assert!(
+                backend
+                    .gevv_c(
+                        Trans::ConjTrans,
+                        Trans::ConjTrans,
+                        alpha,
+                        &a,
+                        &b,
+                        beta,
+                        &mut c,
+                    )
+                    .is_err()
+            );
         }
 
         Ok(())

@@ -29,6 +29,7 @@ jobs:
 
   test:
     needs: changed-files
+    if: ${{ needs.changed-files.outputs.src == 'true' }}
     name: test-on-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -37,33 +38,29 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
-        if: ${{ needs.changed-files.outputs.src == 'true' }}
       - uses: ./.github/actions/setup-build
         with:
           os: ${{ matrix.os }}
-        if: ${{ needs.changed-files.outputs.src == 'true' }}
-      - run: cargo build
-        shell: bash
-        if: ${{ needs.changed-files.outputs.src == 'true' }}
-
-  lint:
-    needs: changed-files
-    name: lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        if: ${{ needs.changed-files.outputs.src == 'true' }}
-      - uses: ./.github/actions/setup-build
+      - uses: taiki-e/install-action@v2
         with:
-          os: ubuntu-latest
-        if: ${{ needs.changed-files.outputs.src == 'true' }}
-      - run: cargo clippy -- -D warnings
-        if: ${{ needs.changed-files.outputs.src == 'true' }}
+          tool: cargo-nextest
+      - run: |
+          cargo make lint
+          cargo make build
+        shell: bash
+
+  all-tests-passed:
+    if: ${{ always() }}
+    name: all-tests-passed
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - if: ${{ needs.test.result == 'failure' || needs.test.result == 'cancelled' }}
+        run: exit 1
 
   auto-merge:
     needs:
-      - test
-      - lint
+      - all-tests-passed
     permissions:
       pull-requests: write
       contents: write

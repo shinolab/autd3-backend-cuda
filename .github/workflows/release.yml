@@ -11,7 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: publish to carate.io
         run: |
           cargo publish --no-verify --dry-run
-          cargo publish --no-verify --token ${{ secrets.CRATEIO_TOKEN }} || true
+          cargo publish --no-verify --token ${{ secrets.CRATEIO_TOKEN }}
