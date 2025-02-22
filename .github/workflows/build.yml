@@ -44,7 +44,9 @@ jobs:
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest
-      - run: cargo make check
+      - run: |
+          cargo make lint
+          cargo make build
         shell: bash
 
   all-tests-passed:
