@@ -11,7 +11,7 @@ readme = "README.md"
 keywords = ["autd"]
 
 [dependencies]
-autd3-core = { version = "31.0.0", features = ["acoustics", "derive", "gain"] }
+autd3-core = { version = "32.0.0", features = ["acoustics", "derive", "gain"] }
 autd3-gain-holo = { version = "31.0.0", default-features = false }
 cuda-sys = { version = "0.2.0", default-features = false }
 nalgebra = { version = "0.33.2", default-features = false, features = ["std"] }
