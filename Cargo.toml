@@ -20,7 +20,7 @@ thiserror = { version = "2.0.12", default-features = false }
 
 [dev-dependencies]
 anyhow = { version = "1.0.98", default-features = false }
-autd3 = { version = "32.1.1", default-features = false }
+autd3 = { version = "33.0.0", default-features = false }
 rstest = { version = "0.25.0", default-features = false }
 assert_approx_eq = { version = "1.1.0", default-features = false }
 approx = { version = "0.5.1", default-features = false }
