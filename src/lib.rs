@@ -96,8 +96,8 @@ impl Display for CUDABackendError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         unsafe {
             match self {
-                CUDABackendError::CuBLASError(err) => write!(f, "cuBLAS Error: {:?}", err),
-                CUDABackendError::CuSOLVERError(err) => write!(f, "cuSOLVER Error: {:?}", err),
+                CUDABackendError::CuBLASError(err) => write!(f, "cuBLAS Error: {err:?}"),
+                CUDABackendError::CuSOLVERError(err) => write!(f, "cuSOLVER Error: {err:?}"),
                 CUDABackendError::CUDAError(err) => write!(
                     f,
                     "CUDA Error: {}",
