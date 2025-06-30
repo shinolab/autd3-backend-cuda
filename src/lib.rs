@@ -3,11 +3,12 @@
 
 mod cusolver;
 
-use std::{collections::HashMap, ffi::CStr, fmt::Display};
+use std::{ffi::CStr, fmt::Display};
 
 use autd3_core::{
     acoustics::directivity::Sphere,
-    gain::BitVec,
+    environment::Environment,
+    gain::TransducerFilter,
     geometry::{Geometry, Point3},
 };
 use autd3_gain_holo::{
@@ -325,11 +326,13 @@ impl LinAlgBackend<Sphere> for CUDABackend {
     fn generate_propagation_matrix(
         &self,
         geometry: &Geometry,
+        env: &Environment,
         foci: &[Point3],
-        filter: Option<&HashMap<usize, BitVec>>,
+        filter: &TransducerFilter,
     ) -> Result<Self::MatrixXc, HoloError> {
         let cols = geometry
-            .devices()
+            .iter()
+            .filter(|dev| filter.is_enabled_device(dev))
             .map(|dev| dev.num_transducers())
             .sum::<usize>();
         let rows = foci.len();
@@ -342,24 +345,9 @@ impl LinAlgBackend<Sphere> for CUDABackend {
         let mut positions = Vec::with_capacity(cols * 3);
         let mut wavenums = Vec::with_capacity(cols);
 
-        if let Some(filter) = filter {
-            geometry.devices().for_each(|dev| {
-                if let Some(filter) = filter.get(&dev.idx()) {
-                    let wavenumber = dev.wavenumber();
-                    dev.iter().for_each(|tr| {
-                        if filter[tr.idx()] {
-                            let p = tr.position();
-                            positions.push(p.x);
-                            positions.push(p.y);
-                            positions.push(p.z);
-                            wavenums.push(wavenumber);
-                        }
-                    })
-                }
-            });
-        } else {
-            geometry.devices().for_each(|dev| {
-                let wavenumber = dev.wavenumber();
+        if filter.is_all_enabled() {
+            geometry.iter().for_each(|dev| {
+                let wavenumber = env.wavenumber();
                 dev.iter().for_each(|tr| {
                     let p = tr.position();
                     positions.push(p.x);
@@ -368,6 +356,22 @@ impl LinAlgBackend<Sphere> for CUDABackend {
                     wavenums.push(wavenumber);
                 })
             });
+        } else {
+            geometry
+                .iter()
+                .filter(|dev| filter.is_enabled_device(dev))
+                .for_each(|dev| {
+                    let wavenumber = env.wavenumber();
+                    dev.iter()
+                        .filter(|tr| filter.is_enabled(tr))
+                        .for_each(|tr| {
+                            let p = tr.position();
+                            positions.push(p.x);
+                            positions.push(p.y);
+                            positions.push(p.z);
+                            wavenums.push(wavenumber);
+                        })
+                });
         }
 
         let cols = wavenums.len();
@@ -1177,11 +1181,12 @@ impl LinAlgBackend<Sphere> for CUDABackend {
 
 #[cfg(test)]
 mod tests {
+    use std::f32::consts::PI;
+
     use autd3::driver::autd3_device::AUTD3;
     use autd3_core::{
         acoustics::{directivity::Sphere, propagate},
-        defined::PI,
-        geometry::UnitQuaternion,
+        geometry::{Transducer, UnitQuaternion},
     };
 
     use nalgebra::{ComplexField, Normed};
@@ -2574,6 +2579,8 @@ mod tests {
         #[case] foci_num: usize,
         backend: CUDABackend,
     ) -> Result<(), HoloError> {
+        let env = Environment::new();
+
         let reference = |geometry: Geometry, foci: Vec<Point3>| {
             let mut g = MatrixXc::zeros(
                 foci.len(),
@@ -2590,7 +2597,7 @@ mod tests {
                 (0..transducers.len()).for_each(|j| {
                     g[(i, j)] = propagate::<Sphere>(
                         transducers[j].1,
-                        geometry[transducers[j].0].wavenumber(),
+                        env.wavenumber(),
                         geometry[transducers[j].0].axial_direction(),
                         &foci[i],
                     )
@@ -2602,7 +2609,12 @@ mod tests {
         let geometry = generate_geometry(dev_num);
         let foci = gen_foci(foci_num).map(|(p, _)| p).collect::<Vec<_>>();
 
-        let g = backend.generate_propagation_matrix(&geometry, &foci, None)?;
+        let g = backend.generate_propagation_matrix(
+            &geometry,
+            &env,
+            &foci,
+            &TransducerFilter::all_enabled(),
+        )?;
         let g = backend.to_host_cm(g)?;
         reference(geometry, foci)
             .iter()
@@ -2624,19 +2636,13 @@ mod tests {
         #[case] foci_num: usize,
         backend: CUDABackend,
     ) -> Result<(), HoloError> {
-        use std::collections::HashMap;
+        let env = Environment::new();
 
-        let filter = |geometry: &Geometry| {
-            geometry
-                .iter()
-                .map(|dev| {
-                    let mut filter = BitVec::new();
-                    dev.iter().for_each(|tr| {
-                        filter.push(tr.idx() > dev.num_transducers() / 2);
-                    });
-                    (dev.idx(), filter)
-                })
-                .collect::<HashMap<_, _>>()
+        let filter = |geometry: &Geometry| -> TransducerFilter {
+            TransducerFilter::from_fn(geometry, |dev| {
+                let num_transducers = dev.num_transducers();
+                Some(move |tr: &Transducer| tr.idx() > num_transducers / 2)
+            })
         };
 
         let reference = |geometry, foci: Vec<Point3>| {
@@ -2645,7 +2651,7 @@ mod tests {
                 .iter()
                 .flat_map(|dev| {
                     dev.iter().filter_map(|tr| {
-                        if filter[&dev.idx()][tr.idx()] {
+                        if filter.is_enabled(tr) {
                             Some((dev.idx(), tr))
                         } else {
                             None
@@ -2659,7 +2665,7 @@ mod tests {
                 (0..transducers.len()).for_each(|j| {
                     g[(i, j)] = propagate::<Sphere>(
                         transducers[j].1,
-                        geometry[transducers[j].0].wavenumber(),
+                        env.wavenumber(),
                         geometry[transducers[j].0].axial_direction(),
                         &foci[i],
                     )
@@ -2672,7 +2678,7 @@ mod tests {
         let foci = gen_foci(foci_num).map(|(p, _)| p).collect::<Vec<_>>();
         let filter = filter(&geometry);
 
-        let g = backend.generate_propagation_matrix(&geometry, &foci, Some(&filter))?;
+        let g = backend.generate_propagation_matrix(&geometry, &env, &foci, &filter)?;
         let g = backend.to_host_cm(g)?;
         assert_eq!(g.nrows(), foci.len());
         assert_eq!(
@@ -2696,6 +2702,8 @@ mod tests {
     #[rstest::rstest]
     #[test]
     fn test_gen_back_prop(backend: CUDABackend) -> Result<(), HoloError> {
+        let env = Environment::new();
+
         let geometry = generate_geometry(1);
         let foci = gen_foci(1).map(|(p, _)| p).collect::<Vec<_>>();
 
@@ -2705,7 +2713,12 @@ mod tests {
             .sum::<usize>();
         let n = foci.len();
 
-        let g = backend.generate_propagation_matrix(&geometry, &foci, None)?;
+        let g = backend.generate_propagation_matrix(
+            &geometry,
+            &env,
+            &foci,
+            &TransducerFilter::all_enabled(),
+        )?;
 
         let b = backend.gen_back_prop(m, n, &g)?;
         let g = backend.to_host_cm(g)?;
