@@ -14,7 +14,7 @@ keywords = ["autd"]
 autd3-core = { version = "35.0.0", features = ["acoustics", "derive", "gain"] }
 autd3-gain-holo = { version = "35.0.0", default-features = false }
 cuda-sys = { version = "0.2.0", default-features = false }
-nalgebra = { version = "0.33.2", default-features = false, features = ["std"] }
+nalgebra = { version = "0.34.0", default-features = false, features = ["std"] }
 rand = { version = "0.9.1", default-features = false }
 thiserror = { version = "2.0.12", default-features = false }
 
